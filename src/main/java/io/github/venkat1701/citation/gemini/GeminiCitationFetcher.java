@@ -1,4 +1,4 @@
-package io.github.venkat1701.citation.tavily;
+package io.github.venkat1701.citation.gemini;
 
 import java.net.URI;
 import java.net.http.HttpClient;

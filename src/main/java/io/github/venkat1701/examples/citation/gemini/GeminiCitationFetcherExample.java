@@ -1,7 +1,7 @@
 package io.github.venkat1701.examples.citation.gemini;
 
 import io.github.venkat1701.citation.CitationResult;
-import io.github.venkat1701.citation.tavily.GeminiCitationFetcher;
+import io.github.venkat1701.citation.gemini.GeminiCitationFetcher;
 
 public class GeminiCitationFetcherExample {
     public static void main(String[] args) {
