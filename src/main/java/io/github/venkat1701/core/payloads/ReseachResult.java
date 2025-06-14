@@ -1,5 +1,7 @@
 package io.github.venkat1701.core.payloads;
 
+import io.github.venkat1701.reasoning.context.ResearchContext;
+
 public class ReseachResult<T> {
 
     private final LLMResponse<T> modelOutput;
