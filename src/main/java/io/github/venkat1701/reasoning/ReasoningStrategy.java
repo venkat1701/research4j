@@ -1,10 +1,13 @@
 package io.github.venkat1701.reasoning;
 
-import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
-import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.core.payloads.LLMResponse;
+import io.github.venkat1701.reasoning.context.ResearchContext;
 
 public interface ReasoningStrategy {
-    <T>LLMResponse<T> apply(String userPrompt, List<CitationResult> citations, Class<T> outputType);
+    <T>LLMResponse<T> reason(ResearchContext context, Class<T> outputType);
+    <T> CompletableFuture<LLMResponse<T>> reasonAsync(ResearchContext context, Class<T> outputType);
+    String getMethodName();
+    boolean supportsConcurrency();
 }
