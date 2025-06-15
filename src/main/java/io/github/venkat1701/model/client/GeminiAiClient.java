@@ -10,19 +10,40 @@ import io.github.venkat1701.model.parser.LLMExtractor;
 
 public class GeminiAiClient implements LLMClient {
     private final ChatModel chatModel;
+    private final LLMExtractor extractor;
 
     public GeminiAiClient(ModelApiConfig config) {
         this.chatModel = GoogleAiGeminiChatModel.builder()
             .modelName(config.getModelName())
             .apiKey(config.getApiKey())
             .build();
+        this.extractor = AiServices.create(LLMExtractor.class, chatModel);
     }
 
     @Override
     public <T> LLMResponse<T> complete(String prompt, Class<T> type) {
-        LLMExtractor<T> extractor = AiServices.create(LLMExtractor.class, chatModel);
-        T result = extractor.extract(prompt, type);
-        return new LLMResponse<>(result.toString(), result);
-    }
+        String rawResponse;
 
+        if (type == String.class) {
+            rawResponse = extractor.analyze(prompt);
+        } else {
+            rawResponse = extractor.extractJson(prompt);
+        }
+
+        if (type == String.class) {
+            @SuppressWarnings("unchecked")
+            T result = (T) rawResponse;
+            return new LLMResponse<>(rawResponse, result);
+        }
+
+        try {
+            @SuppressWarnings("unchecked")
+            T result = (T) rawResponse;
+            return new LLMResponse<>(rawResponse, result);
+        } catch (ClassCastException e) {
+            @SuppressWarnings("unchecked")
+            T result = (T) rawResponse;
+            return new LLMResponse<>(rawResponse, result);
+        }
+    }
 }
