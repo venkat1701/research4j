@@ -5,6 +5,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
 import io.github.venkat1701.citation.service.CitationService;
 import io.github.venkat1701.core.contracts.LLMClient;
@@ -20,6 +21,8 @@ import io.github.venkat1701.pipeline.state.ResearchAgentState;
 import io.github.venkat1701.reasoning.engine.ReasoningEngine;
 
 public class DynamicResearchAgent {
+
+    private static final Logger logger = Logger.getLogger(DynamicResearchAgent.class.getName());
     private final CitationService citationService;
     private final ReasoningEngine reasoningEngine;
     private final LLMClient llmClient;
@@ -31,9 +34,7 @@ public class DynamicResearchAgent {
     private final ReasoningSelectionNode reasoningSelectionNode;
     private final ReasoningExecutionNode reasoningExecutionNode;
 
-    public DynamicResearchAgent(CitationService citationService,
-        ReasoningEngine reasoningEngine,
-        LLMClient llmClient) {
+    public DynamicResearchAgent(CitationService citationService, ReasoningEngine reasoningEngine, LLMClient llmClient) {
         this.citationService = citationService;
         this.reasoningEngine = reasoningEngine;
         this.llmClient = llmClient;
@@ -51,10 +52,74 @@ public class DynamicResearchAgent {
         router.registerNode("reasoning_execution", reasoningExecutionNode);
     }
 
-    public CompletableFuture<ResearchAgentState> processQuery(String sessionId,
-        String query,
-        UserProfile userProfile,
-        ResearchPromptConfig config) {
+    public CompletableFuture<ResearchAgentState> executeNode(String nodeName, ResearchAgentState state) {
+        GraphNode<ResearchAgentState> node = router.getNodes()
+            .get(nodeName);
+
+        if (node == null) {
+            logger.warning("Node not found: " + nodeName);
+            return CompletableFuture.completedFuture(state.withError(new IllegalStateException("Node not found: " + nodeName)));
+        }
+
+        if (!node.shouldExecute(state)) {
+            logger.info("Node " + nodeName + " decided not to execute, skipping");
+            return CompletableFuture.completedFuture(state);
+        }
+
+        logger.info("Executing node: " + nodeName);
+        return node.process(state)
+            .handle((result, throwable) -> {
+                if (throwable != null) {
+                    logger.severe("Error in node " + nodeName + ": " + throwable.getMessage());
+                    if (router.shouldRetry(state, nodeName, (Exception) throwable)) {
+                        return executeNode(nodeName, state).join();
+                    } else {
+                        return state.withError((Exception) throwable);
+                    }
+                }
+                return result;
+            });
+    }
+
+    public CompletableFuture<ResearchAgentState> executePipeline(ResearchAgentState initialState) {
+        CompletableFuture<ResearchAgentState> pipeline = CompletableFuture.completedFuture(initialState);
+        String currentNode = "start";
+
+        while (!currentNode.equals("end")) {
+            final String nodeToExecute = currentNode;
+
+            pipeline = pipeline.thenCompose(state -> {
+                if (state.getError() != null) {
+                    return CompletableFuture.completedFuture(state);
+                }
+
+                List<String> nextNodes = router.determineNextNodes(state, nodeToExecute);
+
+                if (nextNodes.isEmpty()) {
+                    return CompletableFuture.completedFuture(state);
+                }
+
+                String nextNode = nextNodes.get(0);
+                return executeNode(nextNode, state);
+            });
+
+            ResearchAgentState currentState = pipeline.join();
+            if (currentState.getError() != null) {
+                break;
+            }
+
+            List<String> nextNodes = router.determineNextNodes(currentState, currentNode);
+            if (nextNodes.isEmpty()) {
+                break;
+            }
+
+            currentNode = nextNodes.get(0);
+        }
+
+        return pipeline;
+    }
+
+    public CompletableFuture<ResearchAgentState> processQuery(String sessionId, String query, UserProfile userProfile, ResearchPromptConfig config) {
 
         ResearchAgentState initialState = new ResearchAgentState(sessionId, query, userProfile, config);
         return executeGraph(initialState, "start");
@@ -67,13 +132,13 @@ public class DynamicResearchAgent {
 
         List<String> nextNodes = router.determineNextNodes(state, currentNode);
         if (nextNodes.isEmpty()) {
-            return CompletableFuture.completedFuture(state.withError(
-                new IllegalStateException("No next nodes found for: " + currentNode)));
+            return CompletableFuture.completedFuture(state.withError(new IllegalStateException("No next nodes found for: " + currentNode)));
         }
 
         if (nextNodes.size() == 1) {
             String nextNode = nextNodes.get(0);
-            GraphNode<ResearchAgentState> node = router.getNodes().get(nextNode);
+            GraphNode<ResearchAgentState> node = router.getNodes()
+                .get(nextNode);
 
             if (node != null && node.shouldExecute(state)) {
                 return node.process(state)
@@ -90,7 +155,8 @@ public class DynamicResearchAgent {
         } else {
             List<CompletableFuture<ResearchAgentState>> futures = nextNodes.stream()
                 .map(nodeName -> {
-                    GraphNode<ResearchAgentState> node = router.getNodes().get(nodeName);
+                    GraphNode<ResearchAgentState> node = router.getNodes()
+                        .get(nodeName);
                     if (node != null && node.shouldExecute(state)) {
                         return node.process(state);
                     }
@@ -126,13 +192,16 @@ public class DynamicResearchAgent {
     private ResearchAgentState mergeStates(ResearchAgentState state1, ResearchAgentState state2) {
         ResearchAgentState merged = state1.copy();
         ResearchAgentState finalMerged = merged;
-        state2.getMetadata().forEach((key, value) -> {
-            if (value != null) {
-                finalMerged.getMetadata().put(key, value);
-            }
-        });
+        state2.getMetadata()
+            .forEach((key, value) -> {
+                if (value != null) {
+                    finalMerged.getMetadata()
+                        .put(key, value);
+                }
+            });
 
-        if (state2.getCitations() != null && !state2.getCitations().isEmpty()) {
+        if (state2.getCitations() != null && !state2.getCitations()
+            .isEmpty()) {
             merged = merged.withCitations(state2.getCitations());
         }
 
@@ -148,7 +217,8 @@ public class DynamicResearchAgent {
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();
-            Thread.currentThread().interrupt();
+            Thread.currentThread()
+                .interrupt();
         } finally {
             reasoningEngine.shutdown();
         }
