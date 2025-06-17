@@ -8,6 +8,7 @@ import java.util.Map;
 import io.github.venkat1701.core.enums.OutputFormat;
 
 public class UserProfile {
+
     private final String userId;
     private final String domain;
     private final String expertiseLevel;
@@ -17,8 +18,7 @@ public class UserProfile {
     private final List<String> previousQueries;
     private final OutputFormat preferredFormat;
 
-    public UserProfile(String userId, String domain, String expertiseLevel,
-        List<String> preferences, Map<String, Integer> topicInterests,
+    public UserProfile(String userId, String domain, String expertiseLevel, List<String> preferences, Map<String, Integer> topicInterests,
         List<String> previousQueries, OutputFormat preferredFormat) {
         this.userId = userId;
         this.domain = domain != null ? domain : "general";
@@ -29,13 +29,33 @@ public class UserProfile {
         this.preferredFormat = preferredFormat != null ? preferredFormat : OutputFormat.MARKDOWN;
     }
 
-    public String getUserId() { return userId; }
-    public String getDomain() { return domain; }
-    public String getExpertiseLevel() { return expertiseLevel; }
-    public List<String> getPreferences() { return preferences; }
-    public Map<String, Integer> getTopicInterests() { return topicInterests; }
-    public List<String> getPreviousQueries() { return previousQueries; }
-    public OutputFormat getPreferredFormat() { return preferredFormat; }
+    public String getUserId() {
+        return userId;
+    }
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public String getExpertiseLevel() {
+        return expertiseLevel;
+    }
+
+    public List<String> getPreferences() {
+        return preferences;
+    }
+
+    public Map<String, Integer> getTopicInterests() {
+        return topicInterests;
+    }
+
+    public List<String> getPreviousQueries() {
+        return previousQueries;
+    }
+
+    public OutputFormat getPreferredFormat() {
+        return preferredFormat;
+    }
 
     public boolean hasPreference(String preference) {
         return preferences.contains(preference);

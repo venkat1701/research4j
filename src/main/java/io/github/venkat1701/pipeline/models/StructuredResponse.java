@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 public class StructuredResponse {
+
     public String answer;
     public List<String> keyPoints;
     public List<CitationInfo> citations;

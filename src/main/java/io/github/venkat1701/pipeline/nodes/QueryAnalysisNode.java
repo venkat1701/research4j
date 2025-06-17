@@ -38,10 +38,13 @@ public class QueryAnalysisNode implements GraphNode<ResearchAgentState> {
     }
 
     private String buildAnalysisPrompt(ResearchAgentState state) {
-        String userDomain = state.getUserProfile() != null ? state.getUserProfile().getDomain() : "general";
-        String userExpertise = state.getUserProfile() != null ? state.getUserProfile().getExpertiseLevel() : "intermediate";
-        String userPrefs = state.getUserProfile() != null && state.getUserProfile().getPreferences() != null ?
-            String.join(", ", state.getUserProfile().getPreferences()) : "balanced";
+        String userDomain = state.getUserProfile() != null ? state.getUserProfile()
+            .getDomain() : "general";
+        String userExpertise = state.getUserProfile() != null ? state.getUserProfile()
+            .getExpertiseLevel() : "intermediate";
+        String userPrefs = state.getUserProfile() != null && state.getUserProfile()
+            .getPreferences() != null ? String.join(", ", state.getUserProfile()
+            .getPreferences()) : "balanced";
 
         return String.format("""
             Analyze this research query and provide structured analysis in valid JSON format.
@@ -62,12 +65,8 @@ public class QueryAnalysisNode implements GraphNode<ResearchAgentState> {
             }
             
             Only return valid JSON, no other text.
-            """,
-            state.getQuery().replace("\"", "\\\""),
-            userDomain,
-            userExpertise,
-            userPrefs
-        );
+            """, state.getQuery()
+            .replace("\"", "\\\""), userDomain, userExpertise, userPrefs);
     }
 
     private QueryAnalysis createDefaultAnalysis(ResearchAgentState state) {
@@ -88,6 +87,8 @@ public class QueryAnalysisNode implements GraphNode<ResearchAgentState> {
 
     @Override
     public boolean shouldExecute(ResearchAgentState state) {
-        return state != null && state.getQuery() != null && !state.getQuery().trim().isEmpty();
+        return state != null && state.getQuery() != null && !state.getQuery()
+            .trim()
+            .isEmpty();
     }
 }

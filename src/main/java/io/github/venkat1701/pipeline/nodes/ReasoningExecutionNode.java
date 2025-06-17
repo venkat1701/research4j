@@ -10,6 +10,7 @@ import io.github.venkat1701.pipeline.state.ResearchAgentState;
 import io.github.venkat1701.reasoning.engine.ReasoningEngine;
 
 public class ReasoningExecutionNode implements GraphNode<ResearchAgentState> {
+
     private final ReasoningEngine reasoningEngine;
 
     public ReasoningExecutionNode(ReasoningEngine reasoningEngine) {
@@ -18,11 +19,8 @@ public class ReasoningExecutionNode implements GraphNode<ResearchAgentState> {
 
     @Override
     public CompletableFuture<ResearchAgentState> process(ResearchAgentState state) {
-        return reasoningEngine.reasonAsync(
-            state.getSelectedReasoning(),
-            state.getResearchContext(),
-            determineOutputType(state)
-        ).thenApply(state::withResponse);
+        return reasoningEngine.reasonAsync(state.getSelectedReasoning(), state.getResearchContext(), determineOutputType(state))
+            .thenApply(state::withResponse);
     }
 
     private Class<?> determineOutputType(ResearchAgentState state) {
@@ -36,7 +34,9 @@ public class ReasoningExecutionNode implements GraphNode<ResearchAgentState> {
     }
 
     @Override
-    public String getName() { return "reasoning_execution"; }
+    public String getName() {
+        return "reasoning_execution";
+    }
 
     @Override
     public boolean shouldExecute(ResearchAgentState state) {

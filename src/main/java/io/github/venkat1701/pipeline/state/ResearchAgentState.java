@@ -3,7 +3,6 @@ package io.github.venkat1701.pipeline.state;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,6 +16,7 @@ import io.github.venkat1701.pipeline.profile.UserProfile;
 import io.github.venkat1701.reasoning.context.ResearchContext;
 
 public class ResearchAgentState {
+
     private final String sessionId;
     private final String query;
     private final UserProfile userProfile;
@@ -117,26 +117,53 @@ public class ResearchAgentState {
         metadata.put(step, value);
     }
 
-    public String getSessionId() { return sessionId; }
-    public String getQuery() { return query; }
-    public UserProfile getUserProfile() { return userProfile; }
-    public ResearchPromptConfig getConfig() { return config; }
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public String getQuery() {
+        return query;
+    }
+
+    public UserProfile getUserProfile() {
+        return userProfile;
+    }
+
+    public ResearchPromptConfig getConfig() {
+        return config;
+    }
 
     public synchronized List<CitationResult> getCitations() {
         return new ArrayList<>(citations);
     }
 
-    public ResearchContext getResearchContext() { return researchContext; }
-    public ReasoningMethod getSelectedReasoning() { return selectedReasoning; }
-    public LLMResponse<?> getFinalResponse() { return finalResponse; }
-    public Map<String, Object> getMetadata() { return metadata; }
+    public ResearchContext getResearchContext() {
+        return researchContext;
+    }
+
+    public ReasoningMethod getSelectedReasoning() {
+        return selectedReasoning;
+    }
+
+    public LLMResponse<?> getFinalResponse() {
+        return finalResponse;
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata;
+    }
 
     public synchronized List<String> getProcessingSteps() {
         return new ArrayList<>(processingSteps);
     }
 
-    public boolean isComplete() { return isComplete; }
-    public Exception getError() { return error; }
+    public boolean isComplete() {
+        return isComplete;
+    }
+
+    public Exception getError() {
+        return error;
+    }
 
     public Duration getProcessingTime() {
         Instant end = endTime != null ? endTime : Instant.now();

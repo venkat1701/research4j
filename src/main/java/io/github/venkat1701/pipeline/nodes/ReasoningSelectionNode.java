@@ -13,6 +13,7 @@ import io.github.venkat1701.pipeline.profile.UserProfile;
 import io.github.venkat1701.pipeline.state.ResearchAgentState;
 
 public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
+
     private final LLMClient llmClient;
 
     public ReasoningSelectionNode(LLMClient llmClient) {
@@ -32,9 +33,11 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
     }
 
     private ReasoningMethod selectOptimalReasoning(ResearchAgentState state) {
-        QueryAnalysis analysis = (QueryAnalysis) state.getMetadata().get("query_analysis");
+        QueryAnalysis analysis = (QueryAnalysis) state.getMetadata()
+            .get("query_analysis");
         UserProfile profile = state.getUserProfile();
-        String query = state.getQuery() != null ? state.getQuery().toLowerCase() : "";
+        String query = state.getQuery() != null ? state.getQuery()
+            .toLowerCase() : "";
 
         Map<ReasoningMethod, Integer> scores = new HashMap<>();
         scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, 10);
@@ -43,12 +46,9 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
 
         if (analysis != null && analysis.intent != null) {
             switch (analysis.intent) {
-                case "comparison" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE,
-                    scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 30);
-                case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS,
-                    scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 30);
-                case "analysis", "research" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT,
-                    scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 30);
+                case "comparison" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 30);
+                case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS, scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 30);
+                case "analysis", "research" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 30);
             }
         }
 
@@ -66,23 +66,20 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
             if (profile.getPreferences() != null && profile.hasPreference("detailed")) {
                 scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 15);
             }
-            if ((profile.getPreferences() != null && profile.hasPreference("visual")) ||
-                profile.getPreferredFormat() == OutputFormat.TABLE) {
+            if ((profile.getPreferences() != null && profile.hasPreference("visual")) || profile.getPreferredFormat() == OutputFormat.TABLE) {
                 scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 15);
             }
             if (profile.getDomain() != null) {
                 switch (profile.getDomain()) {
-                    case "business" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE,
-                        scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 10);
-                    case "academic" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT,
-                        scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 10);
-                    case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS,
-                        scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 10);
+                    case "business" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 10);
+                    case "academic" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 10);
+                    case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS, scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 10);
                 }
             }
         }
 
-        return scores.entrySet().stream()
+        return scores.entrySet()
+            .stream()
             .max(Map.Entry.comparingByValue())
             .map(Map.Entry::getKey)
             .orElse(ReasoningMethod.CHAIN_OF_THOUGHT);

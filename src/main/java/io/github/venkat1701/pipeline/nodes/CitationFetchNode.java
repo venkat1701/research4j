@@ -65,7 +65,9 @@ public class CitationFetchNode implements GraphNode<ResearchAgentState> {
         }
 
         if (profile == null) {
-            return citations.stream().limit(8).toList();
+            return citations.stream()
+                .limit(8)
+                .toList();
         }
 
         return citations.stream()
@@ -92,19 +94,21 @@ public class CitationFetchNode implements GraphNode<ResearchAgentState> {
         }
 
         if (profile.getTopicInterests() != null) {
-            for (Map.Entry<String, Integer> topic : profile.getTopicInterests().entrySet()) {
-                if (content.contains(topic.getKey().toLowerCase())) {
+            for (Map.Entry<String, Integer> topic : profile.getTopicInterests()
+                .entrySet()) {
+                if (content.contains(topic.getKey()
+                    .toLowerCase())) {
                     score += topic.getValue();
                 }
             }
         }
 
         if (profile.getExpertiseLevel() != null) {
-            if (profile.getExpertiseLevel().equals("expert") &&
-                (content.contains("advanced") || content.contains("technical"))) {
+            if (profile.getExpertiseLevel()
+                .equals("expert") && (content.contains("advanced") || content.contains("technical"))) {
                 score += 10;
-            } else if (profile.getExpertiseLevel().equals("beginner") &&
-                (content.contains("introduction") || content.contains("basics"))) {
+            } else if (profile.getExpertiseLevel()
+                .equals("beginner") && (content.contains("introduction") || content.contains("basics"))) {
                 score += 10;
             }
         }
@@ -132,7 +136,8 @@ public class CitationFetchNode implements GraphNode<ResearchAgentState> {
 
     @Override
     public boolean shouldExecute(ResearchAgentState state) {
-        QueryAnalysis analysis = (QueryAnalysis) state.getMetadata().get("query_analysis");
+        QueryAnalysis analysis = (QueryAnalysis) state.getMetadata()
+            .get("query_analysis");
         return analysis == null || analysis.requiresCitations;
     }
 
@@ -144,7 +149,8 @@ public class CitationFetchNode implements GraphNode<ResearchAgentState> {
             }
         } catch (InterruptedException e) {
             executor.shutdownNow();
-            Thread.currentThread().interrupt();
+            Thread.currentThread()
+                .interrupt();
         }
     }
 }

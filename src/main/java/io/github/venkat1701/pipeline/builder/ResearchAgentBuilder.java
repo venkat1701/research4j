@@ -8,6 +8,7 @@ import io.github.venkat1701.pipeline.DynamicResearchAgent;
 import io.github.venkat1701.reasoning.engine.ReasoningEngine;
 
 public class ResearchAgentBuilder {
+
     private CitationService citationService;
     private ReasoningEngine reasoningEngine;
     private LLMClient llmClient;
