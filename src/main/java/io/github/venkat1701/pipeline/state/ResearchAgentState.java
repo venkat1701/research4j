@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.core.enums.ReasoningMethod;
@@ -21,18 +22,18 @@ public class ResearchAgentState {
     private final UserProfile userProfile;
     private final ResearchPromptConfig config;
 
-    private List<CitationResult> citations = new ArrayList<>();
-    private List<String> processedChunks = new ArrayList<>();
-    private ResearchContext researchContext;
-    private ReasoningMethod selectedReasoning;
-    private LLMResponse<?> finalResponse;
+    private volatile List<CitationResult> citations = new ArrayList<>();
+    private volatile List<String> processedChunks = new ArrayList<>();
+    private volatile ResearchContext researchContext;
+    private volatile ReasoningMethod selectedReasoning;
+    private volatile LLMResponse<?> finalResponse;
 
-    private final Map<String, Object> metadata = new HashMap<>();
+    private final Map<String, Object> metadata = new ConcurrentHashMap<>();
     private final List<String> processingSteps = new ArrayList<>();
-    private Instant startTime = Instant.now();
-    private Instant endTime;
-    private boolean isComplete = false;
-    private Exception error;
+    private final Instant startTime = Instant.now();
+    private volatile Instant endTime;
+    private volatile boolean isComplete = false;
+    private volatile Exception error;
 
     public ResearchAgentState(String sessionId, String query, UserProfile userProfile, ResearchPromptConfig config) {
         this.sessionId = sessionId;
@@ -41,31 +42,37 @@ public class ResearchAgentState {
         this.config = config;
         this.researchContext = new ResearchContext(config);
     }
+
     public ResearchAgentState withCitations(List<CitationResult> citations) {
         ResearchAgentState newState = this.copy();
-        newState.citations = new ArrayList<>(citations);
-        newState.researchContext.setCitations(citations);
-        newState.addProcessingStep("citations_fetched", citations.size());
+        newState.citations = citations != null ? new ArrayList<>(citations) : new ArrayList<>();
+        if (newState.researchContext != null) {
+            newState.researchContext.setCitations(newState.citations);
+        }
+        newState.addProcessingStep("citations_fetched", newState.citations.size());
         return newState;
     }
 
     public ResearchAgentState withReasoning(ReasoningMethod reasoning) {
         ResearchAgentState newState = this.copy();
         newState.selectedReasoning = reasoning;
-        newState.researchContext.setReasoningMethod(reasoning);
-        newState.addProcessingStep("reasoning_selected", reasoning.name());
+        if (newState.researchContext != null && reasoning != null) {
+            newState.researchContext.setReasoningMethod(reasoning);
+        }
+        newState.addProcessingStep("reasoning_selected", reasoning != null ? reasoning.name() : "null");
         return newState;
     }
 
     public ResearchAgentState withQueryAnalysis(QueryAnalysis analysis) {
         ResearchAgentState newState = this.copy();
-        newState.metadata.put("query_analysis", analysis);
-        newState.metadata.put("complexity_score", analysis.complexityScore);
-        newState.metadata.put("detected_intent", analysis.intent);
-        newState.addProcessingStep("query_analysis", analysis.intent);
+        if (analysis != null) {
+            newState.metadata.put("query_analysis", analysis);
+            newState.metadata.put("complexity_score", analysis.complexityScore);
+            newState.metadata.put("detected_intent", analysis.intent);
+            newState.addProcessingStep("query_analysis", analysis.intent);
+        }
         return newState;
     }
-
 
     public ResearchAgentState withResponse(LLMResponse<?> response) {
         ResearchAgentState newState = this.copy();
@@ -80,28 +87,33 @@ public class ResearchAgentState {
         ResearchAgentState newState = this.copy();
         newState.error = error;
         newState.endTime = Instant.now();
-        newState.addProcessingStep("error_occurred", error.getMessage());
+        newState.addProcessingStep("error_occurred", error != null ? error.getMessage() : "Unknown error");
         return newState;
     }
 
     public ResearchAgentState copy() {
         ResearchAgentState copy = new ResearchAgentState(sessionId, query, userProfile, config);
-        copy.citations = new ArrayList<>(this.citations);
-        copy.processedChunks = new ArrayList<>(this.processedChunks);
+
+        synchronized (this) {
+            copy.citations = new ArrayList<>(this.citations);
+            copy.processedChunks = new ArrayList<>(this.processedChunks);
+            copy.processingSteps.addAll(this.processingSteps);
+        }
+
         copy.researchContext = this.researchContext;
         copy.selectedReasoning = this.selectedReasoning;
         copy.finalResponse = this.finalResponse;
         copy.metadata.putAll(this.metadata);
-        copy.processingSteps.addAll(this.processingSteps);
-        copy.startTime = this.startTime;
         copy.endTime = this.endTime;
         copy.isComplete = this.isComplete;
         copy.error = this.error;
+
         return copy;
     }
 
-    private void addProcessingStep(String step, Object value) {
-        processingSteps.add(String.format("%s: %s at %s", step, value, Instant.now()));
+    private synchronized void addProcessingStep(String step, Object value) {
+        String stepEntry = String.format("%s: %s at %s", step, value, Instant.now());
+        processingSteps.add(stepEntry);
         metadata.put(step, value);
     }
 
@@ -109,15 +121,25 @@ public class ResearchAgentState {
     public String getQuery() { return query; }
     public UserProfile getUserProfile() { return userProfile; }
     public ResearchPromptConfig getConfig() { return config; }
-    public List<CitationResult> getCitations() { return citations; }
+
+    public synchronized List<CitationResult> getCitations() {
+        return new ArrayList<>(citations);
+    }
+
     public ResearchContext getResearchContext() { return researchContext; }
     public ReasoningMethod getSelectedReasoning() { return selectedReasoning; }
     public LLMResponse<?> getFinalResponse() { return finalResponse; }
     public Map<String, Object> getMetadata() { return metadata; }
-    public List<String> getProcessingSteps() { return processingSteps; }
+
+    public synchronized List<String> getProcessingSteps() {
+        return new ArrayList<>(processingSteps);
+    }
+
     public boolean isComplete() { return isComplete; }
     public Exception getError() { return error; }
+
     public Duration getProcessingTime() {
-        return Duration.between(startTime, endTime != null ? endTime : Instant.now());
+        Instant end = endTime != null ? endTime : Instant.now();
+        return Duration.between(startTime, end);
     }
 }

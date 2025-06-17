@@ -22,26 +22,33 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
     @Override
     public CompletableFuture<ResearchAgentState> process(ResearchAgentState state) {
         return CompletableFuture.supplyAsync(() -> {
-            ReasoningMethod selectedMethod = selectOptimalReasoning(state);
-            return state.withReasoning(selectedMethod);
+            try {
+                ReasoningMethod selectedMethod = selectOptimalReasoning(state);
+                return state.withReasoning(selectedMethod);
+            } catch (Exception e) {
+                return state.withReasoning(ReasoningMethod.CHAIN_OF_THOUGHT);
+            }
         });
     }
 
     private ReasoningMethod selectOptimalReasoning(ResearchAgentState state) {
         QueryAnalysis analysis = (QueryAnalysis) state.getMetadata().get("query_analysis");
         UserProfile profile = state.getUserProfile();
-        String query = state.getQuery().toLowerCase();
+        String query = state.getQuery() != null ? state.getQuery().toLowerCase() : "";
 
         Map<ReasoningMethod, Integer> scores = new HashMap<>();
-        scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, 0);
-        scores.put(ReasoningMethod.CHAIN_OF_IDEAS, 0);
-        scores.put(ReasoningMethod.CHAIN_OF_TABLE, 0);
+        scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, 10);
+        scores.put(ReasoningMethod.CHAIN_OF_IDEAS, 10);
+        scores.put(ReasoningMethod.CHAIN_OF_TABLE, 10);
 
-        if (analysis != null) {
+        if (analysis != null && analysis.intent != null) {
             switch (analysis.intent) {
-                case "comparison" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 30);
-                case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS, scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 30);
-                case "analysis" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 30);
+                case "comparison" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE,
+                    scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 30);
+                case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS,
+                    scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 30);
+                case "analysis", "research" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT,
+                    scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 30);
             }
         }
 
@@ -51,18 +58,28 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
         if (query.contains("creative") || query.contains("idea") || query.contains("brainstorm")) {
             scores.put(ReasoningMethod.CHAIN_OF_IDEAS, scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 20);
         }
-
-        if (profile.hasPreference("detailed")) {
-            scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 15);
-        }
-        if (profile.hasPreference("visual") || profile.getPreferredFormat() == OutputFormat.TABLE) {
-            scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 15);
+        if (query.contains("analyze") || query.contains("explain") || query.contains("why")) {
+            scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 20);
         }
 
-        switch (profile.getDomain()) {
-            case "business" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 10);
-            case "academic" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 10);
-            case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS, scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 10);
+        if (profile != null) {
+            if (profile.getPreferences() != null && profile.hasPreference("detailed")) {
+                scores.put(ReasoningMethod.CHAIN_OF_THOUGHT, scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 15);
+            }
+            if ((profile.getPreferences() != null && profile.hasPreference("visual")) ||
+                profile.getPreferredFormat() == OutputFormat.TABLE) {
+                scores.put(ReasoningMethod.CHAIN_OF_TABLE, scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 15);
+            }
+            if (profile.getDomain() != null) {
+                switch (profile.getDomain()) {
+                    case "business" -> scores.put(ReasoningMethod.CHAIN_OF_TABLE,
+                        scores.get(ReasoningMethod.CHAIN_OF_TABLE) + 10);
+                    case "academic" -> scores.put(ReasoningMethod.CHAIN_OF_THOUGHT,
+                        scores.get(ReasoningMethod.CHAIN_OF_THOUGHT) + 10);
+                    case "creative" -> scores.put(ReasoningMethod.CHAIN_OF_IDEAS,
+                        scores.get(ReasoningMethod.CHAIN_OF_IDEAS) + 10);
+                }
+            }
         }
 
         return scores.entrySet().stream()
@@ -72,9 +89,12 @@ public class ReasoningSelectionNode implements GraphNode<ResearchAgentState> {
     }
 
     @Override
-    public String getName() { return "reasoning_selection"; }
+    public String getName() {
+        return "reasoning_selection";
+    }
 
     @Override
-    public boolean shouldExecute(ResearchAgentState state) { return true; }
+    public boolean shouldExecute(ResearchAgentState state) {
+        return state != null && !state.isComplete();
+    }
 }
-

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import io.github.venkat1701.citation.service.CitationService;
 import io.github.venkat1701.core.contracts.LLMClient;
@@ -66,17 +67,22 @@ public class DynamicResearchAgent {
 
         List<String> nextNodes = router.determineNextNodes(state, currentNode);
         if (nextNodes.isEmpty()) {
-            return CompletableFuture.completedFuture(state);
+            return CompletableFuture.completedFuture(state.withError(
+                new IllegalStateException("No next nodes found for: " + currentNode)));
         }
 
         if (nextNodes.size() == 1) {
             String nextNode = nextNodes.get(0);
-            GraphNode<ResearchAgentState> node = router.getNodes()
-                .get(nextNode);
+            GraphNode<ResearchAgentState> node = router.getNodes().get(nextNode);
 
             if (node != null && node.shouldExecute(state)) {
                 return node.process(state)
-                    .thenCompose(newState -> executeGraph(newState, nextNode))
+                    .thenCompose(newState -> {
+                        if (newState.getError() != null) {
+                            return CompletableFuture.completedFuture(newState);
+                        }
+                        return executeGraph(newState, nextNode);
+                    })
                     .exceptionally(throwable -> state.withError((Exception) throwable));
             } else {
                 return executeGraph(state, nextNode);
@@ -84,8 +90,7 @@ public class DynamicResearchAgent {
         } else {
             List<CompletableFuture<ResearchAgentState>> futures = nextNodes.stream()
                 .map(nodeName -> {
-                    GraphNode<ResearchAgentState> node = router.getNodes()
-                        .get(nodeName);
+                    GraphNode<ResearchAgentState> node = router.getNodes().get(nodeName);
                     if (node != null && node.shouldExecute(state)) {
                         return node.process(state);
                     }
@@ -97,29 +102,55 @@ public class DynamicResearchAgent {
                 .thenApply(v -> {
                     ResearchAgentState mergedState = state;
                     for (CompletableFuture<ResearchAgentState> future : futures) {
-                        ResearchAgentState nodeResult = future.join();
-                        mergedState = mergeStates(mergedState, nodeResult);
+                        try {
+                            ResearchAgentState nodeResult = future.join();
+                            if (nodeResult.getError() != null) {
+                                return nodeResult; // Return first error encountered
+                            }
+                            mergedState = mergeStates(mergedState, nodeResult);
+                        } catch (Exception e) {
+                            return state.withError(e);
+                        }
                     }
                     return mergedState;
                 })
-                .thenCompose(mergedState -> executeGraph(mergedState, "reasoning_execution"));
+                .thenCompose(mergedState -> {
+                    if (mergedState.getError() != null) {
+                        return CompletableFuture.completedFuture(mergedState);
+                    }
+                    return executeGraph(mergedState, "reasoning_selection");
+                });
         }
     }
 
     private ResearchAgentState mergeStates(ResearchAgentState state1, ResearchAgentState state2) {
         ResearchAgentState merged = state1.copy();
-        merged.getMetadata()
-            .putAll(state2.getMetadata());
-        if (!state2.getCitations().isEmpty()) {
+        ResearchAgentState finalMerged = merged;
+        state2.getMetadata().forEach((key, value) -> {
+            if (value != null) {
+                finalMerged.getMetadata().put(key, value);
+            }
+        });
+
+        if (state2.getCitations() != null && !state2.getCitations().isEmpty()) {
             merged = merged.withCitations(state2.getCitations());
         }
+
         return merged;
     }
 
     public void shutdown() {
-        executor.shutdown();
-        reasoningEngine.shutdown();
+        try {
+            citationFetchNode.shutdown();
+            executor.shutdown();
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        } finally {
+            reasoningEngine.shutdown();
+        }
     }
-
-
 }
