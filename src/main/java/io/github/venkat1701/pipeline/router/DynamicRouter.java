@@ -58,18 +58,18 @@ public class DynamicRouter {
             }
 
             case "query_analysis" -> {
-                QueryAnalysis analysis = getQueryAnalysis(state);
-                if (analysis != null && analysis.requiresCitations) {
-                    logger.info("Citations required, proceeding to citation fetch");
-                    yield List.of("citation_fetch");
-                } else {
-                    logger.info("No citations required, proceeding to reasoning selection");
-                    yield List.of("reasoning_selection");
-                }
+                logger.info("Query analysis complete, proceeding to citation fetch");
+                yield List.of("citation_fetch");
             }
 
             case "citation_fetch" -> {
-                logger.info("Citations fetched, proceeding to reasoning selection");
+                boolean citationsFetched = state.getCitations() != null && !state.getCitations()
+                    .isEmpty();
+                if (citationsFetched) {
+                    logger.info("Citations fetched successfully, proceeding to reasoning selection");
+                } else {
+                    logger.info("No citations fetched (either not required or none found), proceeding to reasoning selection");
+                }
                 yield List.of("reasoning_selection");
             }
 
@@ -168,9 +168,9 @@ public class DynamicRouter {
             return false;
         }
 
-        Map<String, List<String>> validTransitions = Map.of("start", List.of("query_analysis"), "query_analysis",
-            List.of("citation_fetch", "reasoning_selection"), "citation_fetch", List.of("reasoning_selection"), "reasoning_selection",
-            List.of("reasoning_execution"), "reasoning_execution", List.of("end", "reasoning_selection"), // Allow retry
+        Map<String, List<String>> validTransitions = Map.of("start", List.of("query_analysis"), "query_analysis", List.of("citation_fetch"),
+            "citation_fetch", List.of("reasoning_selection"), "reasoning_selection", List.of("reasoning_execution"), "reasoning_execution",
+            List.of("end", "reasoning_selection"),
             "end", List.of());
 
         return validTransitions.getOrDefault(fromNode, List.of())
