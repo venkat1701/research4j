@@ -20,7 +20,7 @@ public class CitationResearchExample {
 
     private static final String GEMINI_API_KEY = "API_KEY";
     private static final String GOOGLE_CSE_ID = "CSE_ID";
-    private static final String GOOGLE_SEARCH_API_KEY = "API_KEY";
+    private static final String GOOGLE_SEARCH_API_KEY = "SEARCH_API_KEY";
 
     public static void main(String[] args) {
         try {
@@ -56,7 +56,6 @@ public class CitationResearchExample {
         String researchQuestion = "what is postgres";
         System.out.println("4. Research Question: " + researchQuestion);
 
-        // Step 5: Fetch citations
         System.out.println("5. Fetching citations...");
         List<CitationResult> citations = service.search(researchQuestion);
         System.out.println("   Found " + citations.size() + " citations:");
@@ -79,12 +78,12 @@ public class CitationResearchExample {
 
         ResearchContext context = new ResearchContext(promptConfig);
         context.setCitations(citations);
-        context.setReasoningMethod(ReasoningMethod.CHAIN_OF_THOUGHT);
+        context.setReasoningMethod(ReasoningMethod.CHAIN_OF_IDEAS);
         context.setStartTime(System.currentTimeMillis());
 
-        System.out.println("7. Applying Chain of Thought reasoning...");
+        System.out.println("7. Applying Chain of Table reasoning...");
         LLMResponse<String> result = engine.reason(
-            ReasoningMethod.CHAIN_OF_THOUGHT,
+            ReasoningMethod.CHAIN_OF_IDEAS,
             context,
             String.class
         );
