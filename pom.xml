@@ -169,7 +169,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>${maven.gpg.plugin.version}</version>
+                <version>3.1.0</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -180,6 +180,7 @@
                     </execution>
                 </executions>
             </plugin>
+
 
             <!-- Nexus Staging Plugin -->
             <plugin>
