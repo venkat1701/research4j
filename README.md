@@ -122,7 +122,7 @@ public class TavilyCitationFetcherExample {
     public static void main(String[] args) {
         TavilyCitationFetcher fetcher = new TavilyCitationFetcher("YOUR_TAVILY_API_KEY");
         var results = fetcher.fetch("Top resources to study system design from");
-        
+
         for (CitationResult result : results) {
             System.out.println("Title: " + result.getTitle());
             System.out.println("URL: " + result.getUrl());
@@ -144,11 +144,11 @@ import io.github.venkat1701.citation.gemini.GeminiCitationFetcher;
 public class GeminiCitationFetcherExample {
     public static void main(String[] args) {
         GeminiCitationFetcher fetcher = new GeminiCitationFetcher(
-            "YOUR_GEMINI_API_KEY", 
+            "YOUR_GEMINI_API_KEY",
             "YOUR_GOOGLE_CSE_ID"
         );
         var results = fetcher.fetch("Top resources to study system design from");
-        
+
         for (CitationResult result : results) {
             System.out.println("Source: " + result.getTitle());
             System.out.println("Content: " + result.getContent());
