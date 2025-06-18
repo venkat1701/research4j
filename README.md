@@ -106,51 +106,6 @@ cd research4j
 
 ---
 
-## Configuration
-
-### Basic Setup
-
-```java
-// Initialize LLM client
-LLMClient model = new GeminiClient(geminiApiKey, "gemini-pro");
-
-// Configure citation provider
-CitationClient citation = new TavilyClient(tavilyApiKey);
-
-// Set up vector store
-EmbeddingStore store = new PineconeStore(pineconeKey, "research-index");
-
-// Choose reasoning strategy
-ReasoningStrategy strategy = new TreeOfThoughtStrategy(model);
-
-// Configure output format
-OutputFormatter formatter = new MarkdownRenderer();
-
-// Create research agent
-DynamicResearchAgent agent = DynamicResearchAgent.builder()
-    .llmClient(model)
-    .citationClient(citation)
-    .embeddingStore(store)
-    .reasoningStrategy(strategy)
-    .outputFormatter(formatter)
-    .build();
-```
-
-### User Profile Customization
-
-```java
-UserProfile profile = UserProfile.builder()
-    .domain("financial-analysis")
-    .expertiseLevel(ExpertiseLevel.INTERMEDIATE)
-    .verbosity(Verbosity.DETAILED)
-    .preferredFormat(OutputFormat.STRUCTURED_MARKDOWN)
-    .build();
-
-ResearchResponse response = agent.research("Analyze Q3 earnings for tech sector", profile);
-```
-
----
-
 ## Examples
 
 ### 1. Basic Citation Fetching
@@ -232,81 +187,75 @@ public class PipelineExample {
     private static final String GOOGLE_SEARCH_API_KEY = "YOUR_GOOGLE_SEARCH_API_KEY";
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
-        // Configure model API
         ModelApiConfig modelApiConfig = new ModelApiConfig(
             GEMINI_API_KEY,
             null,
             "gemini-1.5-flash"
         );
 
-        // Setup citation service
-        CitationConfig citationConfig = new CitationConfig(
-            CitationSource.GOOGLE_GEMINI, 
-            GOOGLE_SEARCH_API_KEY
-        );
+        CitationConfig citationConfig = new CitationConfig(CitationSource.GOOGLE_GEMINI, GOOGLE_SEARCH_API_KEY);
         CitationService citationService = new CitationService(citationConfig, GOOGLE_CSE_ID);
-        
-        // Initialize LLM client and reasoning engine
         LLMClient llmClient = new GeminiAiClient(modelApiConfig);
         ReasoningEngine reasoningEngine = new ReasoningEngine(llmClient);
 
-        // Create dynamic research agent
         DynamicResearchAgent agent = new DynamicResearchAgent(
             citationService,
             reasoningEngine,
             llmClient
         );
 
-        // Configure user profile for personalized research
         UserProfile profile = new UserProfile(
-            "user-123",
+            "1",
             "cloud-computing",
             "intermediate",
             List.of("code-heavy", "balanced"),
-            Map.of("load balancing", 7, "microservices", 9),
-            List.of("what is horizontal scaling?", "CDN basics", "explain system design"),
+            Map.of("load balancing", 7),
+            List.of("what is horizontal scaling?", "CDN basics", "explain what is system design"),
             OutputFormat.MARKDOWN
         );
 
         String query = "CQRS Design Pattern";
 
-        // Create comprehensive research prompt
         ResearchPromptConfig promptConfig = new ResearchPromptConfig(
             query,
             """
-            You are an expert educator in modern distributed systems and large-scale application design.
-            Your task is to generate an educational, markdown-formatted, and source-grounded explanation 
-            for the query: "%s".
-        
-            ### Your Output Must Include:
-            1. **Definition:** Provide a concise yet accurate definition.
-            2. **Design Process:** Describe each phase clearly.
-            3. **Key Pillars:** Cover principles like scalability, availability, reliability.
-            4. **Concrete Examples:** Mention real-world systems like Netflix, Uber.
-            5. **Modern Trends:** Highlight microservices, serverless, cloud-native design.
-            6. **Best Practices:** Include architectural patterns, tradeoffs, dos/don'ts.
-            7. **Final Summary:** End with digestible takeaways.
-            8. **Summary Table:** Include a markdown table summarizing key points.
-        
-            ### Guidelines:
-            - Use clear section headings (###).
-            - Include bullet points and code blocks where helpful.
-            - Ground all facts in the fetched citations.
-            - Format in clean Markdown for browser rendering.
-            - Avoid hallucinations; cite trustworthy sources.
-        
-            Target audience: intermediate-level learner with basic CS knowledge.
-            """.formatted(query),
+                You are an expert educator in modern distributed systems and large-scale application design.
+                Your task is to generate an **educational, markdown-formatted, and source-grounded explanation** 
+                for the query: "%s".
+                
+                ### Your Output Must Include:
+                1. **Definition:** Provide a concise yet accurate definition.
+                2. **Design Process:** Describe each phase clearly – from requirement gathering to maintenance.
+                3. **Key Pillars:** Cover principles like scalability, availability, reliability, consistency, performance, and security.
+                4. **Concrete Examples:** Mention real-world systems like Netflix, Uber, etc. and how they apply these principles.
+                5. **Modern Trends:** Highlight current and emerging trends such as:
+                   - Microservices
+                   - Serverless
+                   - Cloud-native design
+                   - API-first systems
+                   - AI-augmented systems
+                6. **Best Practices:** Incorporate architectural design patterns (e.g., CQRS, event sourcing), tradeoffs, and key dos/don'ts.
+                7. **Final Summary:** End with a clean, digestible takeaway section for learners.
+                8. **Final Summary Table**: End with a clean, markdown renderable summary table for learners.
+                
+                ### Additional Guidelines:
+                - Use clear section headings (###).
+                - Include bullet points and short code blocks where helpful.
+                - All facts and examples should be grounded in the citations fetched via the citation engine.
+                - Format everything in **clean Markdown**, suitable for rendering in a browser-based education app.
+                - Avoid hallucinations; cite concrete, trustworthy sources where applicable.
+                
+                Target audience is an intermediate-level learner with basic computer science knowledge.
+                """.formatted(query),
             String.class,
             OutputFormat.MARKDOWN
         );
 
-        // Execute research query
+
         ResearchAgentState result = agent
             .processQuery("session-001", query, profile, promptConfig)
             .get();
 
-        // Handle results
         if (result.getError() != null) {
             System.err.println("Error occurred: " + result.getError().getMessage());
             result.getError().printStackTrace();
@@ -351,67 +300,53 @@ public class CitationResearchExample {
     public static void main(String[] args) {
         try {
             CitationResearchExample example = new CitationResearchExample();
-            System.out.println("=== Citation Research with Reasoning Example ===");
-            example.runResearchExample();
+            System.out.println("=== Synchronous Citation Research Example ===");
+            example.runSynchronousExample();
+
+            System.out.println("\n"+"=".repeat(60)+"\n");
+
         } catch(Exception e) {
-            System.err.println("Error Running Example: " + e.getMessage());
+            System.err.println("Error Running Example: "+e.getMessage());
             e.printStackTrace();
         }
     }
 
-    public void runResearchExample() {
-        // 1. Setup Citation Service
+    public void runSynchronousExample() {
         System.out.println("1. Setting up Citation Service");
         CitationConfig config = new CitationConfig(CitationSource.GOOGLE_GEMINI, GOOGLE_SEARCH_API_KEY);
         CitationService service = new CitationService(config, GOOGLE_CSE_ID);
 
-        // 2. Configure LLM Client
         System.out.println("2. Setting up Gemini AI Client");
         ModelApiConfig modelApiConfig = new ModelApiConfig(
             GEMINI_API_KEY,
             null,
             "gemini-1.5-flash"
         );
+
         LLMClient llmClient = new GeminiAiClient(modelApiConfig);
 
-        // 3. Initialize Reasoning Engine
         System.out.println("3. Setting up Reasoning Engine");
         ReasoningEngine engine = new ReasoningEngine(llmClient);
 
-        String researchQuestion = "What is PostgreSQL and how does it compare to other databases?";
+        String researchQuestion = "what is postgres";
         System.out.println("4. Research Question: " + researchQuestion);
 
-        // 4. Fetch Citations
         System.out.println("5. Fetching citations...");
         List<CitationResult> citations = service.search(researchQuestion);
         System.out.println("   Found " + citations.size() + " citations:");
 
-        // Display top 3 citations
         for (int i = 0; i < Math.min(citations.size(), 3); i++) {
             CitationResult citation = citations.get(i);
             System.out.println("   [" + (i + 1) + "] " + citation.getTitle());
             System.out.println("       URL: " + citation.getUrl());
-            System.out.println("       Snippet: " + citation.getSnippet().substring(0, 
-                Math.min(100, citation.getSnippet().length())) + "...");
+            System.out.println("       Snippet: " + citation.getSnippet());
             System.out.println();
         }
 
-        // 5. Create Research Context
-        System.out.println("6. Creating Research Context");
+        System.out.println("6. Creating Research Context.");
         ResearchPromptConfig promptConfig = new ResearchPromptConfig(
             researchQuestion,
-            """
-            You are a research assistant providing comprehensive and accurate information 
-            based on the provided sources. Please:
-            
-            1. Provide a clear definition of PostgreSQL
-            2. Explain its key features and capabilities
-            3. Compare it with other popular databases (MySQL, MongoDB, etc.)
-            4. Include use cases and when to choose PostgreSQL
-            5. Cite your sources appropriately using the provided citations
-            
-            Format your response in clear, structured Markdown.
-            """,
+            "You are a research assistant providing comprehensive and accurate information based on the provided sources. Please cite your sources appropriately.",
             String.class,
             OutputFormat.MARKDOWN
         );
@@ -421,8 +356,7 @@ public class CitationResearchExample {
         context.setReasoningMethod(ReasoningMethod.CHAIN_OF_IDEAS);
         context.setStartTime(System.currentTimeMillis());
 
-        // 6. Apply Reasoning
-        System.out.println("7. Applying Chain of Ideas reasoning...");
+        System.out.println("7. Applying Chain of Table reasoning...");
         LLMResponse<String> result = engine.reason(
             ReasoningMethod.CHAIN_OF_IDEAS,
             context,
@@ -431,18 +365,16 @@ public class CitationResearchExample {
 
         context.setEndTime(System.currentTimeMillis());
 
-        // 7. Display Results
         System.out.println("8. Research Results:");
         System.out.println("   Processing time: " + (context.getEndTime() - context.getStartTime()) + "ms");
-        System.out.println("   Citations used: " + citations.size());
-        System.out.println("   Reasoning method: " + context.getReasoningMethod());
-        System.out.println("\n   Final Answer:");
+        System.out.println("   Final Answer:");
         System.out.println("   " + "─".repeat(50));
         System.out.println(result.rawText());
         System.out.println("   " + "─".repeat(50));
 
         // Cleanup
         engine.shutdown();
+
     }
 }
 ```
@@ -466,94 +398,10 @@ UserProfile financialAnalyst = new UserProfile(
         "market volatility patterns",
         "ESG impact assessment"
     ),
-    OutputFormat.STRUCTURED_MARKDOWN
+    OutputFormat.MARKDOWN
 );
-
-// Research query tailored for financial analysis
-String query = "Impact of rising interest rates on tech sector valuations";
-ResearchResponse response = agent.research(query, financialAnalyst);
 ```
 
-### 5. Multi-Format Output Example
-
-```java
-// Configure different output formats for different use cases
-public class OutputFormatExample {
-    public void demonstrateFormats() {
-        // JSON format for API responses
-        UserProfile apiProfile = UserProfile.builder()
-            .preferredFormat(OutputFormat.JSON)
-            .build();
-        
-        // Markdown for documentation
-        UserProfile docsProfile = UserProfile.builder()
-            .preferredFormat(OutputFormat.MARKDOWN)
-            .build();
-        
-        // HTML for web display
-        UserProfile webProfile = UserProfile.builder()
-            .preferredFormat(OutputFormat.HTML)
-            .build();
-        
-        String query = "Explain microservices architecture patterns";
-        
-        // Generate responses in different formats
-        ResearchResponse jsonResponse = agent.research(query, apiProfile);
-        ResearchResponse markdownResponse = agent.research(query, docsProfile);
-        ResearchResponse htmlResponse = agent.research(query, webProfile);
-    }
-}
-```
-
----
-
-## Project Structure
-
-```
-research4j/
-├── core/                       # Agent orchestration & state management
-│   ├── DynamicResearchAgent.java
-│   ├── ResearchAgentState.java
-│   ├── ReasoningStrategy.java
-│   └── UserProfile.java
-│
-├── model/                      # LLM clients via LangChain4j
-│   ├── LLMClient.java
-│   ├── GeminiClient.java
-│   ├── OpenAiClient.java
-│   └── ClaudeClient.java
-│
-├── citation/                   # Citation search providers
-│   ├── CitationClient.java
-│   ├── TavilyClient.java
-│   ├── PerplexityClient.java
-│   └── GroundedGeminiClient.java
-│
-├── embedding/                  # Vector store abstractions
-│   ├── EmbeddingStore.java
-│   ├── PineconeStore.java
-│   ├── PgVectorStore.java
-│   └── QdrantStore.java
-│
-├── reasoning/                  # Reasoning strategy implementations
-│   ├── ChainOfThoughtStrategy.java
-│   ├── TreeOfThoughtStrategy.java
-│   ├── ChainOfTableStrategy.java
-│   └── ChainOfIdeasStrategy.java
-│
-├── output/                     # Response formatting & rendering
-│   ├── OutputFormatter.java
-│   ├── FormatRenderer.java
-│   ├── TableRenderer.java
-│   ├── MarkdownRenderer.java
-│   ├── JsonRenderer.java
-│   └── models/
-│       ├── ResearchSummary.java
-│       └── ComparativeAnalysis.java
-│
-└── langgraph/                  # LangGraph4j orchestration
-    └── ResearchAgentGraph.java
-```
 
 ---
 
@@ -613,7 +461,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Venkat**  
 GitHub: [@venkat1701](https://github.com/venkat1701)  
-Email: [Contact](mailto:contact@venkat1701.dev)
+Email: [Contact](mailto:thejeastdev@gmail.com)
 
 ---
 
