@@ -106,48 +106,6 @@ cd research4j
 
 ---
 
-## Configuration
-
-### Basic Setup
-
-```java
-// Initialize LLM client
-LLMClient model = new GeminiClient(geminiApiKey, "gemini-pro");
-
-// Configure citation provider
-CitationClient citation = new TavilyClient(tavilyApiKey);
-
-// Set up vector store
-EmbeddingStore store = new PineconeStore(pineconeKey, "research-index");
-
-// Choose reasoning strategy
-ReasoningStrategy strategy = new TreeOfThoughtStrategy(model);
-
-// Configure output format
-OutputFormatter formatter = new MarkdownRenderer();
-
-// Create research agent
-DynamicResearchAgent agent = DynamicResearchAgent.builder()
-    .llmClient(model)
-    .citationClient(citation)
-    .embeddingStore(store)
-    .reasoningStrategy(strategy)
-    .outputFormatter(formatter)
-    .build();
-```
-
-### User Profile Customization
-
-```java
-UserProfile profile = UserProfile.builder()
-    .domain("financial-analysis")
-    .expertiseLevel(ExpertiseLevel.INTERMEDIATE)
-    .verbosity(Verbosity.DETAILED)
-    .preferredFormat(OutputFormat.STRUCTURED_MARKDOWN)
-    .build();
-
-ResearchResponse response = agent.research("Analyze Q3 earnings for tech sector", profile);
-```
 
 ---
 
