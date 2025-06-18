@@ -91,14 +91,10 @@ Research4j follows **Clean Architecture** principles with strict separation of c
 <dependency>
     <groupId>io.github.venkat1701</groupId>
     <artifactId>research4j</artifactId>
-    <version>0.1.0</version>
+    <version>1.0.0</version>
 </dependency>
 ```
 
-#### Gradle
-```gradle
-implementation 'io.github.venkat1701:research4j:0.1.0'
-```
 
 ### Development Setup
 
