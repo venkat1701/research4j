@@ -6,12 +6,7 @@
 
 **Research4j** is a highly modular and extensible Java framework for building domain-adaptive, large language model (LLM)-powered research agents. It provides plug-and-play capabilities for integrating LLMs, vector stores, reasoning strategies, citation retrieval, and structured output rendering using a clean, layered architecture.
 
-## Built On
 
-- **[LangChain4j](https://github.com/langchain4j/langchain4j)** - Model and vector store abstractions
-- **[LangGraph4j](https://github.com/langchain4j/langgraph4j)** - Dynamic agent orchestration
-
----
 
 ## Features
 
