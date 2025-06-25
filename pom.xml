@@ -6,7 +6,7 @@
 
     <groupId>io.github.venkat1701</groupId>
     <artifactId>research4j</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>research4J</name>
@@ -132,8 +132,8 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${maven.compiler.plugin.version}</version>
                 <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
+                    <source>21</source>
+                    <target>21</target>
                 </configuration>
             </plugin>
 
