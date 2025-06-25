@@ -1,100 +1,491 @@
 # Research4j
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Java Version](https://img.shields.io/badge/Java-17+-brightgreen.svg)](https://openjdk.java.net/)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/venkat1701/research4j)
+**Intelligent Research Automation Library with Dynamic Reasoning and Citation Management**
 
-**Research4j** is a highly modular and extensible Java framework for building domain-adaptive, large language model (LLM)-powered research agents. It provides plug-and-play capabilities for integrating LLMs, vector stores, reasoning strategies, citation retrieval, and structured output rendering using a clean, layered architecture.
+[![Java](https://img.shields.io/badge/Java-17%2B-orange)](https://openjdk.java.net/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Build Status](https://img.shields.io/badge/Build-Passing-green.svg)](https://github.com/venkat1701/research4j)
 
+Research4j is a comprehensive Java library that automates research workflows through intelligent query analysis, dynamic citation fetching, adaptive reasoning strategies, and seamless LLM integration. Built with a modular architecture, it provides a robust solution for applications requiring automated research capabilities.
 
+## Key Features
 
-## Features
+### Intelligent Research Pipeline
+- **Dynamic Query Analysis**: Automatically analyzes query complexity, intent, and requirements
+- **Adaptive Reasoning Selection**: Chooses optimal reasoning strategies (Chain-of-Thought, Chain-of-Table, Chain-of-Ideas)
+- **Multi-Source Citation Fetching**: Integrates with Google Search, Tavily, and other research APIs
+- **User Profile Personalization**: Tailors responses based on expertise level and preferences
 
-- **LangGraph4j-based** agent routing and orchestration
-- **Pluggable LLM support**: OpenAI, Gemini
-- **Modular citation providers**: Tavily, Gemini (grounded)
-- **Vector DB support**: Pinecone, PGVector, Qdrant (embedding + retrieval) TBD
-- **Multiple reasoning strategies**: Chain of Thought, Chain of Table, Chain of Ideas
-- **Structured outputs** via Java POJOs + dynamic rendering (Markdown, JSON, HTML) TBD
-- **Personalized research** via `UserProfile` (domain, expertise, verbosity, format)
+### Robust Architecture
+- **Asynchronous Processing**: Virtual thread-based execution for high performance
+- **Auto-Closeable Resources**: Proper resource management with automatic cleanup
+- **Comprehensive Error Handling**: Structured exception hierarchy with retry logic
+- **Session Management**: Stateful research sessions for related queries
 
----
+### Flexible Integration
+- **Multi-LLM Support**: OpenAI GPT, Google Gemini with extensible client architecture
+- **Configurable Output Formats**: Markdown, JSON, Table formats
+- **Environment-based Configuration**: Seamless deployment with environment variables
+- **Builder Pattern**: Fluent API for easy configuration
 
-## Architecture
-
-Research4j follows **Clean Architecture** principles with strict separation of concerns:
-
-### Core Components
-
-| Component | Responsibility |
-|-----------|----------------|
-| `DynamicResearchAgent` | Coordinates the entire query lifecycle |
-| `ResearchAgentState` | Immutable state across graph transitions |
-| `ReasoningStrategy` | Strategy pattern for CoT, ToT, etc. |
-| `UserProfile` | Customizes agent behavior per user |
-
-### Model Layer
-
-| Component | Responsibility |
-|-----------|----------------|
-| `LLMClient` | Unified interface for OpenAI, Gemini, Claude |
-| `EmbeddingStore` | Abstraction over Pinecone, PGVector, Qdrant |
-
-### Citation Layer
-
-| Component | Responsibility |
-|-----------|----------------|
-| `CitationClient` | Searches relevant sources for a query |
-| `TavilyClient`, `PerplexityClient` | Concrete implementations |
-
-### LangGraph Nodes
-
-| Node | Role |
-|------|------|
-| `QueryAnalysisNode` | Understands query complexity and requirements |
-| `CitationFetchNode` | Fetches and ranks relevant sources |
-| `ReasoningSelectionNode` | Chooses optimal strategy dynamically |
-| `ReasoningExecutionNode` | Executes strategy and formats output |
-
-### Output Rendering
-
-| Component | Description |
-|-----------|-------------|
-| `OutputFormatter` | Selects appropriate renderer |
-| `FormatRenderer` | Interface with implementations for different formats |
-| `ResearchSummary`, `ComparativeAnalysis` | Output POJOs with metadata annotations |
-
----
-
-## Use Cases
-
-- **Domain-specific research assistants** (legal, financial, scientific)
-- **Internal analyst tools** for product and business teams
-- **Personalized tutoring systems** with adaptive learning
-- **Research-heavy SaaS platforms** with intelligent search
-- **Enterprise knowledge queries** via LLM-as-a-Service backends
-
----
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- **Java 17+**
-- **Maven 3.6+** or **Gradle 7+**
-- API keys for your chosen LLM and search providers
+- **Java 17+** (Virtual threads support required)
+- **API Keys** for at least one LLM provider and citation source
 
 ### Installation
 
-#### Maven
 ```xml
 <dependency>
     <groupId>io.github.venkat1701</groupId>
     <artifactId>research4j</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
 </dependency>
 ```
 
+### Basic Usage
+
+```java
+import io.github.venkat1701.Research4j;
+import io.github.venkat1701.agent.ResearchResult;
+
+// Environment-based configuration (recommended)
+try (Research4j research = Research4j.createDefault()) {
+    ResearchResult result = research.research("What is machine learning?");
+    
+    System.out.println("Answer: " + result.getAnswer());
+    System.out.println("Citations: " + result.getCitations().size());
+    System.out.println("Processing Time: " + result.getProcessingTime());
+}
+```
+
+## Configuration Guide
+
+### Environment Variables
+
+Set these environment variables for automatic configuration:
+
+```bash
+# LLM Providers (at least one required)
+export GEMINI_API_KEY="your-gemini-api-key"
+export OPENAI_API_KEY="your-openai-api-key"
+
+# Citation Sources (at least one required)
+export TAVILY_API_KEY="your-tavily-api-key"
+export GOOGLE_SEARCH_API_KEY="your-google-search-api-key"
+export GOOGLE_CSE_ID="your-google-cse-id"
+
+# Optional Configuration
+export RESEARCH4J_DEFAULT_MODEL="gemini-1.5-flash"
+export RESEARCH4J_MAX_CITATIONS="15"
+export RESEARCH4J_REQUEST_TIMEOUT_SECONDS="60"
+```
+
+### Programmatic Configuration
+
+```java
+// Gemini + Google Search Configuration
+Research4j research = Research4j.builder()
+    .withGemini("your-gemini-key", "gemini-1.5-flash")
+    .withGoogleSearch("search-api-key", "cse-id")
+    .defaultReasoning(ReasoningMethod.CHAIN_OF_THOUGHT)
+    .defaultOutputFormat(OutputFormat.MARKDOWN)
+    .maxCitations(15)
+    .timeout(Duration.ofMinutes(2))
+    .enableDebug()
+    .build();
+
+// OpenAI + Tavily Configuration
+Research4j research = Research4j.builder()
+    .withOpenAI("your-openai-key", "gpt-4")
+    .withTavily("your-tavily-key")
+    .defaultReasoning(ReasoningMethod.CHAIN_OF_TABLE)
+    .maxRetries(3)
+    .build();
+```
+
+## Advanced Usage
+
+### Session-Based Research
+
+```java
+try (Research4j research = Research4j.createDefault();
+     ResearchSession session = research.createSession()) {
+    
+    // Related queries in same session maintain context
+    ResearchResult blockchain = session.query("What is blockchain?");
+    ResearchResult bitcoin = session.query("How does Bitcoin use blockchain?");
+    ResearchResult smartContracts = session.query("What are smart contracts?");
+}
+```
+
+### Custom User Profiles
+
+```java
+import io.github.venkat1701.pipeline.profile.UserProfile;
+import io.github.venkat1701.core.enums.OutputFormat;
+
+UserProfile developerProfile = new UserProfile(
+    "dev-001",                          // User ID
+    "software-engineering",             // Domain
+    "expert",                          // Expertise level
+    List.of("technical", "detailed"),  // Preferences
+    Map.of(                           // Topic interests (weighted)
+        "java", 9,
+        "microservices", 8,
+        "distributed systems", 9
+    ),
+    List.of(),                        // Previous queries
+    OutputFormat.MARKDOWN             // Preferred format
+);
+
+ResearchResult result = research.research(
+    "Best practices for API rate limiting", 
+    developerProfile
+);
+```
+
+### Specialized Configurations
+
+```java
+// Academic Research Configuration
+Research4j academicResearch = Research4j.createForAcademicResearch(
+    "gemini-key", "search-key", "cse-id"
+);
+
+// Business Analysis Configuration
+Research4j businessAnalysis = Research4j.createForBusinessAnalysis(
+    "openai-key", "tavily-key"
+);
+```
+
+## Architecture Overview
+
+### Core Components
+
+#### Research4j (Main Entry Point)
+The primary facade that orchestrates the entire research pipeline:
+
+```java
+public class Research4j implements AutoCloseable {
+    private final Research4jConfig config;
+    private final DynamicResearchAgent agent;
+    private final LLMClient llmClient;
+    private final CitationService citationService;
+    private final ReasoningEngine reasoningEngine;
+}
+```
+
+#### DynamicResearchAgent (Pipeline Orchestrator)
+Manages the research workflow through a graph-based pipeline:
+
+- **QueryAnalysisNode**: Analyzes incoming queries for complexity and intent
+- **CitationFetchNode**: Retrieves relevant sources based on query analysis
+- **ReasoningSelectionNode**: Chooses optimal reasoning strategy
+- **ReasoningExecutionNode**: Executes the selected reasoning approach
+
+#### ReasoningEngine (Strategy Pattern Implementation)
+Supports multiple reasoning methodologies:
+
+- **Chain-of-Thought**: Step-by-step analytical reasoning
+- **Chain-of-Table**: Structured tabular analysis for comparisons
+- **Chain-of-Ideas**: Creative parallel idea generation
+
+#### CitationService (Multi-Provider Abstraction)
+Unified interface for multiple citation sources:
+
+```java
+public interface CitationFetcher {
+    List<CitationResult> fetch(String query) throws CitationException;
+}
+```
+
+### Data Flow Architecture
+
+```
+User Query → Query Analysis → Citation Fetch → Reasoning Selection → 
+Reasoning Execution → Response Generation → ResearchResult
+```
+
+### Configuration Management
+
+The library employs a layered configuration approach:
+
+1. **Environment Variables**: Primary configuration source
+2. **Programmatic Configuration**: Override environment settings
+3. **Default Values**: Fallback for unspecified settings
+
+```java
+public class Research4jConfig {
+    // Environment variable loading with fallbacks
+    private void loadFromEnvironment() {
+        loadApiKeyFromEnv(OPENAI_API_KEY, ModelType.OPENAI.name());
+        loadApiKeyFromEnv(GEMINI_API_KEY, ModelType.GEMINI.name());
+        // ... additional configuration loading
+    }
+}
+```
+
+## API Reference
+
+### Core Classes
+
+#### Research4j
+
+Primary interface for research operations:
+
+```java
+// Basic research
+ResearchResult research(String query)
+ResearchResult research(String query, UserProfile userProfile)
+ResearchResult research(String query, OutputFormat outputFormat)
+ResearchResult research(String query, UserProfile userProfile, OutputFormat outputFormat)
+
+// Session management
+ResearchSession createSession()
+ResearchSession createSession(UserProfile userProfile)
+
+// Health checks
+boolean isHealthy()
+```
+
+#### ResearchResult
+
+Contains comprehensive research output:
+
+```java
+public class ResearchResult {
+    String getAnswer()                    // Formatted answer
+    String getRawResponse()               // Raw LLM response
+    List<CitationResult> getCitations()  // Source citations
+    Map<String, Object> getMetadata()    // Processing metadata
+    Duration getProcessingTime()          // Execution time
+    boolean hasError()                    // Error status
+    Exception getError()                  // Error details if any
+}
+```
+
+#### CitationResult
+
+Structured citation information:
+
+```java
+public class CitationResult {
+    String getTitle()                     // Source title
+    String getSnippet()                   // Brief excerpt
+    String getContent()                   // Full content
+    String getUrl()                       // Source URL
+    double getRelevanceScore()            // 0.0-1.0 relevance
+    LocalDateTime getRetrievedAt()        // Fetch timestamp
+    String getDomain()                    // Source domain
+    int getWordCount()                    // Content length
+}
+```
+
+### Configuration Options
+
+#### Research4jConfig.Builder
+
+```java
+Research4jConfig.Builder builder()
+    .openAiApiKey(String apiKey)
+    .geminiApiKey(String apiKey)
+    .tavilyApiKey(String apiKey)
+    .googleSearchApiKey(String searchKey)
+    .googleCseId(String cseId)
+    .defaultModel(String model)
+    .defaultCitationSource(CitationSource source)
+    .defaultReasoningMethod(ReasoningMethod method)
+    .defaultOutputFormat(OutputFormat format)
+    .requestTimeout(Duration timeout)
+    .maxCitations(int maxCitations)
+    .maxRetries(int maxRetries)
+    .debugEnabled(boolean enabled)
+    .cacheEnabled(boolean enabled)
+    .build()
+```
+
+## Error Handling
+
+### Exception Hierarchy
+
+Research4j provides a comprehensive exception hierarchy for robust error handling:
+
+```java
+Research4jException (Base)
+├── ConfigurationException        // Configuration issues
+├── LLMClientException           // LLM provider errors
+├── CitationException            // Citation fetch errors
+├── PipelineException            // Pipeline execution errors
+├── ReasoningException           // Reasoning strategy errors
+├── AuthenticationException      // API authentication errors
+├── RateLimitException          // Rate limiting errors
+└── VectorStoreException        // Vector database errors
+```
+
+### Error Handling Best Practices
+
+```java
+try (Research4j research = Research4j.createDefault()) {
+    ResearchResult result = research.research("complex query");
+    
+    if (result.hasError()) {
+        Exception error = result.getError();
+        if (error instanceof RateLimitException) {
+            RateLimitException rateLimit = (RateLimitException) error;
+            System.out.println("Rate limited by: " + rateLimit.getProvider());
+            System.out.println("Retry after: " + rateLimit.getRetryAfterSeconds());
+        }
+    }
+} catch (ConfigurationException e) {
+    System.err.println("Configuration error: " + e.getMessage());
+} catch (Research4jException e) {
+    System.err.println("Research error [" + e.getErrorCode() + "]: " + e.getMessage());
+}
+```
+
+## Performance Considerations
+
+### Async Processing
+
+Research4j leverages Java's virtual threads for optimal performance:
+
+```java
+// Internal async processing example
+private CompletableFuture<CitationResult> fetchCitationAsync(WebSearchResult result) {
+    return CompletableFuture.supplyAsync(() -> {
+        // Citation processing logic
+    }, virtualThreadExecutor);
+}
+```
+
+### Resource Management
+
+Proper resource cleanup is handled automatically:
+
+```java
+@Override
+public void close() {
+    try {
+        if (agent != null) agent.shutdown();
+        if (llmClient instanceof AutoCloseable) {
+            ((AutoCloseable) llmClient).close();
+        }
+    } catch (Exception e) {
+        logger.warning("Error during shutdown: " + e.getMessage());
+    }
+}
+```
+
+### Optimization Tips
+
+1. **Reuse Research4j instances** when possible
+2. **Use sessions** for related queries to leverage context
+3. **Configure appropriate timeouts** based on your use case
+4. **Monitor health status** for long-running applications
+5. **Implement proper retry logic** for transient failures
+
+## Testing
+
+### Unit Testing Example
+
+```java
+@Test
+public void testBasicResearch() throws Exception {
+    try (Research4j research = Research4j.builder()
+            .withGemini("test-key")
+            .withTavily("test-key")
+            .build()) {
+        
+        ResearchResult result = research.research("test query");
+        
+        assertNotNull(result);
+        assertFalse(result.hasError());
+        assertNotNull(result.getAnswer());
+    }
+}
+```
+
+### Integration Testing
+
+```java
+@Test
+@EnabledIf("hasValidApiKeys")
+public void testFullPipeline() throws Exception {
+    try (Research4j research = Research4j.createDefault()) {
+        assertTrue(research.isHealthy());
+        
+        ResearchResult result = research.research("machine learning basics");
+        
+        assertFalse(result.hasError());
+        assertTrue(result.getCitations().size() > 0);
+        assertTrue(result.getProcessingTime().toSeconds() < 60);
+    }
+}
+```
+
+## Production Deployment
+
+### Docker Configuration
+
+```dockerfile
+FROM openjdk:17-jre-slim
+
+COPY research4j-app.jar /app/
+COPY application.properties /app/
+
+ENV GEMINI_API_KEY=${GEMINI_API_KEY}
+ENV GOOGLE_SEARCH_API_KEY=${GOOGLE_SEARCH_API_KEY}
+ENV GOOGLE_CSE_ID=${GOOGLE_CSE_ID}
+
+WORKDIR /app
+ENTRYPOINT ["java", "-jar", "research4j-app.jar"]
+```
+
+### Monitoring and Logging
+
+```java
+// Health check endpoint
+@GetMapping("/health")
+public ResponseEntity<Map<String, Object>> health() {
+    Map<String, Object> status = new HashMap<>();
+    status.put("healthy", research4j.isHealthy());
+    status.put("timestamp", Instant.now());
+    
+    return ResponseEntity.ok(status);
+}
+
+// Metrics collection
+@EventListener
+public void onResearchComplete(ResearchResult result) {
+    meterRegistry.counter("research.completed").increment();
+    meterRegistry.timer("research.duration")
+        .record(result.getProcessingTime());
+}
+```
+
+### Configuration Management
+
+```yaml
+# application.yml
+research4j:
+  llm:
+    provider: gemini
+    model: gemini-1.5-flash
+    timeout: 60s
+  citation:
+    provider: google
+    max-results: 15
+  reasoning:
+    default-method: CHAIN_OF_THOUGHT
+  performance:
+    max-retries: 3
+    enable-cache: true
+```
+
+## Contributing
 
 ### Development Setup
 
@@ -104,375 +495,28 @@ cd research4j
 ./mvnw clean install
 ```
 
----
-
-## Examples
-
-### 1. Basic Citation Fetching
-
-#### Using Tavily Citation Provider
-
-```java
-package io.github.venkat1701.examples.citation.tavily;
-
-import io.github.venkat1701.citation.CitationResult;
-import io.github.venkat1701.citation.tavily.TavilyCitationFetcher;
-
-public class TavilyCitationFetcherExample {
-    public static void main(String[] args) {
-        TavilyCitationFetcher fetcher = new TavilyCitationFetcher("YOUR_TAVILY_API_KEY");
-        var results = fetcher.fetch("Top resources to study system design from");
-
-        for (CitationResult result : results) {
-            System.out.println("Title: " + result.getTitle());
-            System.out.println("URL: " + result.getUrl());
-            System.out.println("Snippet: " + result.getSnippet());
-            System.out.println("---");
-        }
-    }
-}
-```
-
-#### Using Gemini Citation Provider
-
-```java
-package io.github.venkat1701.examples.citation.gemini;
-
-import io.github.venkat1701.citation.CitationResult;
-import io.github.venkat1701.citation.gemini.GeminiCitationFetcher;
-
-public class GeminiCitationFetcherExample {
-    public static void main(String[] args) {
-        GeminiCitationFetcher fetcher = new GeminiCitationFetcher(
-            "YOUR_GEMINI_API_KEY",
-            "YOUR_GOOGLE_CSE_ID"
-        );
-        var results = fetcher.fetch("Top resources to study system design from");
-
-        for (CitationResult result : results) {
-            System.out.println("Source: " + result.getTitle());
-            System.out.println("Content: " + result.getContent());
-            System.out.println("Relevance Score: " + result.getRelevanceScore());
-            System.out.println("---");
-        }
-    }
-}
-```
-
-### 2. Advanced Research Pipeline
-
-```java
-package io.github.venkat1701.examples.pipeline;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-
-import io.github.venkat1701.citation.config.CitationConfig;
-import io.github.venkat1701.citation.enums.CitationSource;
-import io.github.venkat1701.citation.service.CitationService;
-import io.github.venkat1701.core.contracts.LLMClient;
-import io.github.venkat1701.core.enums.OutputFormat;
-import io.github.venkat1701.core.payloads.ResearchPromptConfig;
-import io.github.venkat1701.model.client.GeminiAiClient;
-import io.github.venkat1701.model.config.ModelApiConfig;
-import io.github.venkat1701.pipeline.DynamicResearchAgent;
-import io.github.venkat1701.pipeline.profile.UserProfile;
-import io.github.venkat1701.pipeline.state.ResearchAgentState;
-import io.github.venkat1701.reasoning.engine.ReasoningEngine;
-
-public class PipelineExample {
-    private static final String GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
-    private static final String GOOGLE_CSE_ID = "YOUR_GOOGLE_CSE_ID";
-    private static final String GOOGLE_SEARCH_API_KEY = "YOUR_GOOGLE_SEARCH_API_KEY";
-
-    public static void main(String[] args) throws ExecutionException, InterruptedException {
-        ModelApiConfig modelApiConfig = new ModelApiConfig(
-            GEMINI_API_KEY,
-            null,
-            "gemini-1.5-flash"
-        );
-
-        CitationConfig citationConfig = new CitationConfig(CitationSource.GOOGLE_GEMINI, GOOGLE_SEARCH_API_KEY);
-        CitationService citationService = new CitationService(citationConfig, GOOGLE_CSE_ID);
-        LLMClient llmClient = new GeminiAiClient(modelApiConfig);
-        ReasoningEngine reasoningEngine = new ReasoningEngine(llmClient);
-
-        DynamicResearchAgent agent = new DynamicResearchAgent(
-            citationService,
-            reasoningEngine,
-            llmClient
-        );
-
-        UserProfile profile = new UserProfile(
-            "1",
-            "cloud-computing",
-            "intermediate",
-            List.of("code-heavy", "balanced"),
-            Map.of("load balancing", 7),
-            List.of("what is horizontal scaling?", "CDN basics", "explain what is system design"),
-            OutputFormat.MARKDOWN
-        );
-
-        String query = "CQRS Design Pattern";
-
-        ResearchPromptConfig promptConfig = new ResearchPromptConfig(
-            query,
-            """
-                You are an expert educator in modern distributed systems and large-scale application design.
-                Your task is to generate an **educational, markdown-formatted, and source-grounded explanation** 
-                for the query: "%s".
-                
-                ### Your Output Must Include:
-                1. **Definition:** Provide a concise yet accurate definition.
-                2. **Design Process:** Describe each phase clearly – from requirement gathering to maintenance.
-                3. **Key Pillars:** Cover principles like scalability, availability, reliability, consistency, performance, and security.
-                4. **Concrete Examples:** Mention real-world systems like Netflix, Uber, etc. and how they apply these principles.
-                5. **Modern Trends:** Highlight current and emerging trends such as:
-                   - Microservices
-                   - Serverless
-                   - Cloud-native design
-                   - API-first systems
-                   - AI-augmented systems
-                6. **Best Practices:** Incorporate architectural design patterns (e.g., CQRS, event sourcing), tradeoffs, and key dos/don'ts.
-                7. **Final Summary:** End with a clean, digestible takeaway section for learners.
-                8. **Final Summary Table**: End with a clean, markdown renderable summary table for learners.
-                
-                ### Additional Guidelines:
-                - Use clear section headings (###).
-                - Include bullet points and short code blocks where helpful.
-                - All facts and examples should be grounded in the citations fetched via the citation engine.
-                - Format everything in **clean Markdown**, suitable for rendering in a browser-based education app.
-                - Avoid hallucinations; cite concrete, trustworthy sources where applicable.
-                
-                Target audience is an intermediate-level learner with basic computer science knowledge.
-                """.formatted(query),
-            String.class,
-            OutputFormat.MARKDOWN
-        );
-
-
-        ResearchAgentState result = agent
-            .processQuery("session-001", query, profile, promptConfig)
-            .get();
-
-        if (result.getError() != null) {
-            System.err.println("Error occurred: " + result.getError().getMessage());
-            result.getError().printStackTrace();
-        } else {
-            System.out.println("=== Research Output ===");
-            System.out.println(result.getFinalResponse().structuredOutput());
-            System.out.println("\n=== Metadata ===");
-            result.getMetadata().forEach((k, v) -> System.out.println(k + ": " + v));
-        }
-
-        agent.shutdown();
-    }
-}
-```
-
-### 3. Citation-Based Research with Reasoning
-
-```java
-package io.github.venkat1701.examples.reasoning;
-
-import java.util.List;
-
-import io.github.venkat1701.citation.CitationResult;
-import io.github.venkat1701.citation.config.CitationConfig;
-import io.github.venkat1701.citation.enums.CitationSource;
-import io.github.venkat1701.citation.service.CitationService;
-import io.github.venkat1701.core.contracts.LLMClient;
-import io.github.venkat1701.core.enums.OutputFormat;
-import io.github.venkat1701.core.enums.ReasoningMethod;
-import io.github.venkat1701.core.payloads.LLMResponse;
-import io.github.venkat1701.core.payloads.ResearchPromptConfig;
-import io.github.venkat1701.model.client.GeminiAiClient;
-import io.github.venkat1701.model.config.ModelApiConfig;
-import io.github.venkat1701.reasoning.context.ResearchContext;
-import io.github.venkat1701.reasoning.engine.ReasoningEngine;
-
-public class CitationResearchExample {
-    private static final String GEMINI_API_KEY = "YOUR_GEMINI_API_KEY";
-    private static final String GOOGLE_CSE_ID = "YOUR_GOOGLE_CSE_ID";
-    private static final String GOOGLE_SEARCH_API_KEY = "YOUR_GOOGLE_SEARCH_API_KEY";
-
-    public static void main(String[] args) {
-        try {
-            CitationResearchExample example = new CitationResearchExample();
-            System.out.println("=== Synchronous Citation Research Example ===");
-            example.runSynchronousExample();
-
-            System.out.println("\n"+"=".repeat(60)+"\n");
-
-        } catch(Exception e) {
-            System.err.println("Error Running Example: "+e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    public void runSynchronousExample() {
-        System.out.println("1. Setting up Citation Service");
-        CitationConfig config = new CitationConfig(CitationSource.GOOGLE_GEMINI, GOOGLE_SEARCH_API_KEY);
-        CitationService service = new CitationService(config, GOOGLE_CSE_ID);
-
-        System.out.println("2. Setting up Gemini AI Client");
-        ModelApiConfig modelApiConfig = new ModelApiConfig(
-            GEMINI_API_KEY,
-            null,
-            "gemini-1.5-flash"
-        );
-
-        LLMClient llmClient = new GeminiAiClient(modelApiConfig);
-
-        System.out.println("3. Setting up Reasoning Engine");
-        ReasoningEngine engine = new ReasoningEngine(llmClient);
-
-        String researchQuestion = "what is postgres";
-        System.out.println("4. Research Question: " + researchQuestion);
-
-        System.out.println("5. Fetching citations...");
-        List<CitationResult> citations = service.search(researchQuestion);
-        System.out.println("   Found " + citations.size() + " citations:");
-
-        for (int i = 0; i < Math.min(citations.size(), 3); i++) {
-            CitationResult citation = citations.get(i);
-            System.out.println("   [" + (i + 1) + "] " + citation.getTitle());
-            System.out.println("       URL: " + citation.getUrl());
-            System.out.println("       Snippet: " + citation.getSnippet());
-            System.out.println();
-        }
-
-        System.out.println("6. Creating Research Context.");
-        ResearchPromptConfig promptConfig = new ResearchPromptConfig(
-            researchQuestion,
-            "You are a research assistant providing comprehensive and accurate information based on the provided sources. Please cite your sources appropriately.",
-            String.class,
-            OutputFormat.MARKDOWN
-        );
-
-        ResearchContext context = new ResearchContext(promptConfig);
-        context.setCitations(citations);
-        context.setReasoningMethod(ReasoningMethod.CHAIN_OF_IDEAS);
-        context.setStartTime(System.currentTimeMillis());
-
-        System.out.println("7. Applying Chain of Table reasoning...");
-        LLMResponse<String> result = engine.reason(
-            ReasoningMethod.CHAIN_OF_IDEAS,
-            context,
-            String.class
-        );
-
-        context.setEndTime(System.currentTimeMillis());
-
-        System.out.println("8. Research Results:");
-        System.out.println("   Processing time: " + (context.getEndTime() - context.getStartTime()) + "ms");
-        System.out.println("   Final Answer:");
-        System.out.println("   " + "─".repeat(50));
-        System.out.println(result.rawText());
-        System.out.println("   " + "─".repeat(50));
-
-        // Cleanup
-        engine.shutdown();
-
-    }
-}
-```
-
-### 4. Custom User Profile Example
-
-```java
-// Create a specialized user profile for financial analysis
-UserProfile financialAnalyst = new UserProfile(
-    "analyst-001",
-    "financial-analysis",
-    "expert",
-    List.of("quantitative", "detailed", "chart-heavy"),
-    Map.of(
-        "risk assessment", 9,
-        "market trends", 8,
-        "regulatory compliance", 7
-    ),
-    List.of(
-        "quarterly earnings analysis",
-        "market volatility patterns",
-        "ESG impact assessment"
-    ),
-    OutputFormat.MARKDOWN
-);
-```
-
-
----
-
-## Current Limitations
-
-- No built-in UI or hosted deployment layer
-- Caching layer not yet implemented
-- Response streaming not supported
-- Performance dependent on external LLM latency
-- Requires paid API keys for full functionality
-
----
-
-## Roadmap
-
-- [ ] **Observability**: LangFuse integration for prompt tracking and evaluation
-- [ ] **Streaming**: Real-time response streaming via SSE/gRPC
-- [ ] **DSL**: Domain-specific language for custom reasoning graphs
-- [ ] **Dashboard**: Admin interface for live monitoring and evaluation
-- [ ] **Local LLMs**: Support for LM Studio, Ollama, and other local models
-- [ ] **Caching**: Intelligent caching layer for performance optimization
-- [ ] **Multi-modal**: Support for image and document analysis
-
----
-
-## Contributing
-
-We welcome contributions from the community! Please see our [Contributing Guide](CONTRIBUTING.md) for details on:
-
-- Code of Conduct
-- Development setup
-- Pull request process
-- Issue reporting guidelines
-
-### Development
-
-```bash
-# Run tests
-./mvnw test
-
-# Run integration tests
-./mvnw verify -Pintegration-tests
-
-# Generate documentation
-./mvnw javadoc:javadoc
-```
-
----
+### Code Style Guidelines
+
+- Follow standard Java conventions
+- Use meaningful variable and method names
+- Implement comprehensive error handling
+- Write unit tests for new features
+- Document public APIs with Javadoc
+
+### Pull Request Process
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/new-feature`)
+3. Commit changes (`git commit -am 'Add new feature'`)
+4. Push to branch (`git push origin feature/new-feature`)
+5. Create Pull Request
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
----
+## Support
 
-## Maintainer
-
-**Venkat**  
-GitHub: [@venkat1701](https://github.com/venkat1701)  
-Email: [Contact](mailto:thejeastdev@gmail.com)
-
----
-
-## Acknowledgments
-
-- [LangChain4j](https://github.com/langchain4j/langchain4j) team for the excellent Java LLM framework
-- [LangGraph4j](https://github.com/langchain4j/langgraph4j) for agent orchestration capabilities
-- The open-source community for inspiration and feedback
-
----
-
-**If Research4j helps your project, please consider giving it a star!**
-
-[Report Bug](https://github.com/venkat1701/research4j/issues) • [Request Feature](https://github.com/venkat1701/research4j/issues) • [Documentation](https://venkat1701.github.io/research4j)
+- **Documentation**: [GitHub Wiki](https://github.com/venkat1701/research4j/wiki)
+- **Issues**: [GitHub Issues](https://github.com/venkat1701/research4j/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/venkat1701/research4j/discussions)
