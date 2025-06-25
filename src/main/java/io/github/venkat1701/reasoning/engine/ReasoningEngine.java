@@ -11,6 +11,7 @@ import java.util.concurrent.Executors;
 import io.github.venkat1701.core.contracts.LLMClient;
 import io.github.venkat1701.core.enums.ReasoningMethod;
 import io.github.venkat1701.core.payloads.LLMResponse;
+import io.github.venkat1701.exceptions.client.LLMClientException;
 import io.github.venkat1701.reasoning.ReasoningStrategy;
 import io.github.venkat1701.reasoning.context.ResearchContext;
 import io.github.venkat1701.reasoning.strategy.ChainOfIdeasStrategy;
@@ -37,7 +38,7 @@ public class ReasoningEngine {
         return strategies;
     }
 
-    public <T>LLMResponse<T> reason(ReasoningMethod reasoningMethod, ResearchContext context, Class<T> outputType) {
+    public <T>LLMResponse<T> reason(ReasoningMethod reasoningMethod, ResearchContext context, Class<T> outputType) throws LLMClientException {
         ReasoningStrategy strategy = strategies.get(reasoningMethod);
         if(strategy == null) {
             throw new IllegalArgumentException("No strategy found for " + reasoningMethod);
@@ -65,7 +66,11 @@ public class ReasoningEngine {
                     .map(CompletableFuture::join)
                     .toList();
 
-                return combineResults(results, context, outputType);
+                try {
+                    return combineResults(results, context, outputType);
+                } catch (LLMClientException e) {
+                    throw new RuntimeException(e);
+                }
             });
     }
 
@@ -86,7 +91,7 @@ public class ReasoningEngine {
         }
     }
 
-    private <T> LLMResponse<T> combineResults(List<LLMResponse<T>> results, ResearchContext context, Class<T> outputType) {
+    private <T> LLMResponse<T> combineResults(List<LLMResponse<T>> results, ResearchContext context, Class<T> outputType) throws LLMClientException {
         StringBuilder combinedPrompt = new StringBuilder();
         combinedPrompt.append("Combine and synthesize the following analyses to provide the best answer:\n\n");
         combinedPrompt.append("Question: ").append(context.getConfig().userPrompt()).append("\n\n");

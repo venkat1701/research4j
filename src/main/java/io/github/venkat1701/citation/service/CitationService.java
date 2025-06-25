@@ -10,11 +10,12 @@ import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.citation.config.CitationConfig;
 import io.github.venkat1701.citation.gemini.GeminiCitationFetcher;
 import io.github.venkat1701.citation.tavily.TavilyCitationFetcher;
+import io.github.venkat1701.exceptions.citation.CitationException;
 
 public class CitationService {
     private final CitationFetcher citationFetcher;
 
-    public CitationService(CitationConfig citationConfig) {
+    public CitationService(CitationConfig citationConfig) throws CitationException {
         switch(citationConfig.getCitationSource()) {
             case TAVILY -> this.citationFetcher = new TavilyCitationFetcher(citationConfig.getApiKey());
             case GOOGLE_GEMINI -> this.citationFetcher = new GeminiCitationFetcher(citationConfig.getApiKey(), "");
@@ -22,7 +23,7 @@ public class CitationService {
         }
     }
 
-    public CitationService(CitationConfig citationConfig, String CSI) {
+    public CitationService(CitationConfig citationConfig, String CSI) throws CitationException {
         switch(citationConfig.getCitationSource()) {
             case TAVILY -> this.citationFetcher = new TavilyCitationFetcher(citationConfig.getApiKey());
             case GOOGLE_GEMINI -> this.citationFetcher = new GeminiCitationFetcher(citationConfig.getApiKey(), CSI);
@@ -30,7 +31,7 @@ public class CitationService {
         }
     }
 
-    public List<CitationResult> search(String query) {
+    public List<CitationResult> search(String query) throws CitationException {
         return this.citationFetcher.fetch(query);
     }
 }
