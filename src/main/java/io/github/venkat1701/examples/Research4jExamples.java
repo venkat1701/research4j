@@ -46,11 +46,13 @@ public class Research4jExamples {
             ResearchResult result = research.research("What is machine learning?");
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Research completed in " + result.getProcessingTime());
                 System.out.println("Answer: " + truncate(result.getAnswer(), 200));
-                System.out.println("Citations: " + result.getCitations().size());
+                System.out.println("Citations: " + result.getCitations()
+                    .size());
             }
 
         } catch (Exception e) {
@@ -83,11 +85,13 @@ public class Research4jExamples {
             ResearchResult result = research.research("How does CQRS pattern work in microservices?", OutputFormat.MARKDOWN);
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Research completed successfully");
                 System.out.println("Answer preview: " + truncate(result.getAnswer(), 150));
-                System.out.println("Citations found: " + result.getCitations().size());
+                System.out.println("Citations found: " + result.getCitations()
+                    .size());
             }
 
         } catch (Exception e) {
@@ -118,7 +122,8 @@ public class Research4jExamples {
                     ResearchResult result = session.query(query);
 
                     if (result.hasError()) {
-                        System.out.println("Error: " + result.getError().getMessage());
+                        System.out.println("Error: " + result.getError()
+                            .getMessage());
                     } else {
                         System.out.println("Completed in " + result.getProcessingTime());
                         System.out.println(truncate(result.getAnswer(), 100));
@@ -153,12 +158,14 @@ public class Research4jExamples {
             ResearchResult result = research.research("Best practices for API rate limiting", developerProfile);
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Personalized research completed");
                 System.out.println("Profile: " + developerProfile.getDomain() + " (" + developerProfile.getExpertiseLevel() + ")");
                 System.out.println("Answer: " + truncate(result.getAnswer(), 200));
-                System.out.println("Citations: " + result.getCitations().size());
+                System.out.println("Citations: " + result.getCitations()
+                    .size());
             }
 
         } catch (Exception e) {
@@ -186,7 +193,8 @@ public class Research4jExamples {
             ResearchResult result = research.research(query, OutputFormat.TABLE);
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Comparison research completed");
                 System.out.println("Reasoning: CHAIN_OF_TABLE (optimized for comparisons)");
@@ -223,7 +231,8 @@ public class Research4jExamples {
             ResearchResult result = research.research("Market analysis of electric vehicle industry 2024", businessAnalyst);
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Business analysis completed");
                 System.out.println("Optimized for: Business Analysis");
@@ -261,7 +270,8 @@ public class Research4jExamples {
             ResearchResult result = research.research("Recent advances in transformer architecture for NLP", researcher);
 
             if (result.hasError()) {
-                System.out.println("Error: " + result.getError().getMessage());
+                System.out.println("Error: " + result.getError()
+                    .getMessage());
             } else {
                 System.out.println("Academic research completed");
                 System.out.println("Optimized for: Academic Research");
@@ -269,7 +279,8 @@ public class Research4jExamples {
                 System.out.println("Max Citations: 15");
                 System.out.println("Timeout: 2 minutes");
                 System.out.println("Result: " + truncate(result.getAnswer(), 200));
-                System.out.println("Citations found: " + result.getCitations().size());
+                System.out.println("Citations found: " + result.getCitations()
+                    .size());
             }
 
         } catch (Exception e) {
