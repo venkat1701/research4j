@@ -7,6 +7,7 @@ import java.util.concurrent.Executors;
 import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.core.contracts.LLMClient;
 import io.github.venkat1701.core.payloads.LLMResponse;
+import io.github.venkat1701.exceptions.client.LLMClientException;
 import io.github.venkat1701.reasoning.ReasoningStrategy;
 import io.github.venkat1701.reasoning.context.ResearchContext;
 
@@ -21,7 +22,7 @@ public class ChainOfTableStrategy implements ReasoningStrategy {
     }
 
     @Override
-    public <T> LLMResponse<T> reason(ResearchContext context, Class<T> outputType) {
+    public <T> LLMResponse<T> reason(ResearchContext context, Class<T> outputType) throws LLMClientException {
         String tablePrompt = buildTablePrompt(context);
         context.setFinalPrompt(tablePrompt);
         return llmClient.complete(tablePrompt, outputType);
@@ -29,7 +30,13 @@ public class ChainOfTableStrategy implements ReasoningStrategy {
 
     @Override
     public <T> CompletableFuture<LLMResponse<T>> reasonAsync(ResearchContext context, Class<T> outputType) {
-        return CompletableFuture.supplyAsync(() -> reason(context, outputType), executor);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return reason(context, outputType);
+            } catch (LLMClientException e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
     }
 
     private String buildTablePrompt(ResearchContext context) {

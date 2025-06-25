@@ -8,6 +8,7 @@ import java.util.concurrent.Executors;
 
 import io.github.venkat1701.core.contracts.LLMClient;
 import io.github.venkat1701.core.payloads.LLMResponse;
+import io.github.venkat1701.exceptions.client.LLMClientException;
 import io.github.venkat1701.reasoning.ReasoningStrategy;
 import io.github.venkat1701.reasoning.context.ResearchContext;
 
@@ -22,7 +23,7 @@ public class ChainOfIdeasStrategy implements ReasoningStrategy {
     }
 
     @Override
-    public <T> LLMResponse<T> reason(ResearchContext context, Class<T> outputType) {
+    public <T> LLMResponse<T> reason(ResearchContext context, Class<T> outputType) throws LLMClientException {
         // generating ideas in parallel processing
         List<CompletableFuture<String>> ideaFutures = generateIdeasAsync(context);
         List<String> ideas = ideaFutures
@@ -37,7 +38,13 @@ public class ChainOfIdeasStrategy implements ReasoningStrategy {
 
     @Override
     public <T> CompletableFuture<LLMResponse<T>> reasonAsync(ResearchContext context, Class<T> outputType) {
-        return CompletableFuture.supplyAsync(() -> reason(context, outputType), executor);
+        return CompletableFuture.supplyAsync(() -> {
+            try {
+                return reason(context, outputType);
+            } catch (LLMClientException e) {
+                throw new RuntimeException(e);
+            }
+        }, executor);
     }
 
     private List<CompletableFuture<String>> generateIdeasAsync(ResearchContext context) {
@@ -50,7 +57,12 @@ public class ChainOfIdeasStrategy implements ReasoningStrategy {
         for (String perspective : perspectives) {
             CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
                 String ideaPrompt = buildIdeaPrompt(context, perspective);
-                LLMResponse<String> response = llmClient.complete(ideaPrompt, String.class);
+                LLMResponse<String> response = null;
+                try {
+                    response = llmClient.complete(ideaPrompt, String.class);
+                } catch (LLMClientException e) {
+                    throw new RuntimeException(e);
+                }
                 return response.structuredOutput();
             }, executor);
             futures.add(future);
