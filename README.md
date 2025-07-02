@@ -32,7 +32,7 @@ Research4j is a comprehensive Java library that automates research workflows thr
 
 ### Prerequisites
 
-- **Java 17+** (Virtual threads support required)
+- **Java 21+** (Virtual threads support required)
 - **API Keys** for at least one LLM provider and citation source
 
 ### Installation
