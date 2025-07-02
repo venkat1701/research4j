@@ -102,9 +102,17 @@ public class Research4j implements AutoCloseable {
 
     public ResearchResult research(String query, UserProfile userProfile, OutputFormat outputFormat) {
         try {
-            var promptConfig = new io.github.venkat1701.core.payloads.ResearchPromptConfig(query,
-                "You are a helpful research assistant. Provide comprehensive, accurate, and well-sourced answers.", String.class, outputFormat);
-
+            var promptConfig = new io.github.venkat1701.core.payloads.ResearchPromptConfig(
+                query,
+                """
+                You are a highly skilled research assistant specialized in technical and academic topics.
+                Your task is to provide well-researched, structured, and deeply reasoned answers.
+                Always use reliable sources when possible, clarify uncertainties explicitly, and prioritize accuracy over speculation.
+                When dealing with technical content, prefer precision and clarity.
+                If the question lacks sufficient context, request clarification rather than assuming.""",
+                String.class,
+                outputFormat
+            );
             var result = agent.processQuery(generateSessionId(), query, userProfile, promptConfig)
                 .get();
 
