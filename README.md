@@ -45,6 +45,17 @@ Research4j is a comprehensive Java library that automates research workflows thr
 </dependency>
 ```
 
+### Setting up your CSE and API Keys
+In order to use this, you need to setup your own programmable search engine. This is required to get the citations and materials to perform reasoning on.
+#### Setting up the Programmable Search Engine
+1. Visit https://programmablesearchengine.google.com/
+2. Create your Custom Search Engine and get the CSE ID from the dashboard.
+3. Paste that into your CSE_ID
+
+#### Getting the Google Search API Key
+1. Go to this website https://developers.google.com/custom-search/v1/introduction and generate a Programmable Search Engine API key.
+2. Paste that into the GOOGLE_SEARCH_API_KEY environmental variable.
+
 ### Basic Usage
 
 ```java
