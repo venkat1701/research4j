@@ -93,13 +93,19 @@ public class ReasoningEngine {
 
     private <T> LLMResponse<T> combineResults(List<LLMResponse<T>> results, ResearchContext context, Class<T> outputType) throws LLMClientException {
         StringBuilder combinedPrompt = new StringBuilder();
-        combinedPrompt.append("Combine and synthesize the following analyses to provide the best answer:\n\n");
-        combinedPrompt.append("Question: ").append(context.getConfig().userPrompt()).append("\n\n");
+        combinedPrompt.append("You are an expert research assistant.\n\n");
+        combinedPrompt.append("Your task is to **carefully synthesize** multiple independent analyses and produce a **unified, accurate, and insightful answer**.\n");
+        combinedPrompt.append("Carefully weigh the strengths of each viewpoint, resolve any contradictions if present, and prioritize clarity, factual depth, and logical structure.\n\n");
+
+        combinedPrompt.append("Question:\n").append(context.getConfig().userPrompt()).append("\n\n");
 
         for (int i = 0; i < results.size(); i++) {
             combinedPrompt.append(String.format("Analysis %d:\n%s\n\n", i + 1, results.get(i).rawText()));
         }
-        combinedPrompt.append("Provide a synthesized, comprehensive answer that combines the best insights from all analyses:");
+
+        combinedPrompt.append("Now write a comprehensive synthesis that integrates the key insights from all analyses. ");
+        combinedPrompt.append("Ensure the response is well-structured, technically accurate, and clearly articulated. ");
+        combinedPrompt.append("If any parts conflict, resolve them logically or highlight the uncertainty with reasoning.\n");
 
         return llmClient.complete(combinedPrompt.toString(), outputType);
     }
