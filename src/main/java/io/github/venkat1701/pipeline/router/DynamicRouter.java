@@ -89,6 +89,7 @@ public class DynamicRouter {
             }
 
             case "citation_fetch" -> {
+
                 List<String> nextNodes = determineCitationNextSteps(state, quality, visitedNodes);
                 if (!nextNodes.isEmpty()) {
                     yield nextNodes;
@@ -98,6 +99,7 @@ public class DynamicRouter {
 
             case "reasoning_selection" -> {
                 if (state.getSelectedReasoning() != null) {
+
                     if (shouldGatherMoreInformation(state, quality)) {
                         logger.info("Insufficient information detected, revisiting citation fetch");
                         yield List.of("citation_fetch");
@@ -111,6 +113,7 @@ public class DynamicRouter {
 
             case "reasoning_execution" -> {
                 if (state.getFinalResponse() != null) {
+
                     if (shouldImproveResponse(state, quality, visitedNodes)) {
                         logger.info("Response quality below threshold, attempting improvement");
                         yield determineImprovementStrategy(state, quality, visitedNodes);
@@ -150,6 +153,7 @@ public class DynamicRouter {
 
     @SuppressWarnings("unchecked")
     private void updateTraversalMetadata(ResearchAgentState state, String currentNode) {
+
         int iterations = (Integer) state.getMetadata()
             .getOrDefault(ITERATION_COUNT_KEY, 0);
         state.getMetadata()
@@ -187,6 +191,7 @@ public class DynamicRouter {
     }
 
     private boolean shouldGatherMoreInformation(ResearchAgentState state, InformationQualityAssessment quality) {
+
         if (isComplexQuery(state) && quality.overallQuality < 0.7) {
             return getRetryCount(state, "citation_fetch") < MAX_RETRIES;
         }
@@ -201,6 +206,7 @@ public class DynamicRouter {
     }
 
     private boolean shouldImproveResponse(ResearchAgentState state, InformationQualityAssessment quality, Set<String> visitedNodes) {
+
         if (getRetryCount(state, "reasoning_execution") >= 2) {
             return false;
         }
@@ -218,7 +224,9 @@ public class DynamicRouter {
     }
 
     private List<String> determineImprovementStrategy(ResearchAgentState state, InformationQualityAssessment quality, Set<String> visitedNodes) {
+
         if (quality.averageRelevanceScore < 0.6) {
+
             state.getMetadata()
                 .put("citation_improvement_round", true);
             return List.of("citation_fetch");
@@ -236,6 +244,7 @@ public class DynamicRouter {
 
         if (state.getCitations() != null && !state.getCitations()
             .isEmpty()) {
+
             double totalRelevance = state.getCitations()
                 .stream()
                 .mapToDouble(citation -> citation.getRelevanceScore())
@@ -256,10 +265,11 @@ public class DynamicRouter {
                 .mapToInt(citation -> citation.getContent() != null ? citation.getContent()
                     .length() : 0)
                 .sum();
-            assessment.contentRichness = Math.min(1.0, totalContentLength / 10000.0); // Normalize to 0-1
+            assessment.contentRichness = Math.min(1.0, totalContentLength / 10000.0);
 
             assessment.overallQuality = (assessment.averageRelevanceScore * 0.5) + (assessment.sourceDiversity * 0.3) + (assessment.contentRichness * 0.2);
         } else {
+
             assessment.averageRelevanceScore = 0.0;
             assessment.sourceDiversity = 0.0;
             assessment.contentRichness = 0.0;
@@ -287,6 +297,7 @@ public class DynamicRouter {
         if (analysis != null) {
             return analysis.complexityScore >= 6;
         }
+
         String query = state.getQuery()
             .toLowerCase();
         return query.length() > 100 || query.contains("comprehensive") || query.contains("detailed") || query.contains("compare") || query.contains("analyze");
@@ -305,6 +316,17 @@ public class DynamicRouter {
         return null;
     }
 
+    public void incrementRetryCount(ResearchAgentState state, String nodeName) {
+        if (state != null && nodeName != null) {
+            String retryKey = nodeName + RETRY_COUNT_KEY;
+            int currentCount = (Integer) state.getMetadata()
+                .getOrDefault(retryKey, 0);
+            state.getMetadata()
+                .put(retryKey, currentCount + 1);
+            logger.info("Incremented retry count for node '" + nodeName + "' to " + (currentCount + 1));
+        }
+    }
+
     public boolean shouldRetry(ResearchAgentState state, String nodeName, Exception error) {
         if (state == null || nodeName == null || error == null) {
             return false;
@@ -315,23 +337,25 @@ public class DynamicRouter {
             .getOrDefault(retryKey, 0);
 
         if (currentRetries >= MAX_RETRIES) {
-            logger.warning("Max retries reached for node: " + nodeName);
+            logger.warning("Max retries reached for node: " + nodeName + " (" + currentRetries + "/" + MAX_RETRIES + ")");
             return false;
         }
 
         int totalIterations = (Integer) state.getMetadata()
             .getOrDefault(ITERATION_COUNT_KEY, 0);
         if (totalIterations >= MAX_TOTAL_ITERATIONS) {
-            logger.warning("Maximum total iterations reached, stopping retries");
+            logger.warning("Maximum total iterations reached, stopping retries for node: " + nodeName);
             return false;
         }
 
         boolean shouldRetry = isRetryableError(error);
 
         if (shouldRetry) {
+
             state.getMetadata()
                 .put(retryKey, currentRetries + 1);
-            logger.info("Retrying node: " + nodeName + " (attempt " + (currentRetries + 1) + "/" + MAX_RETRIES + ")");
+            logger.info("Retrying node: " + nodeName + " due to " + error.getClass()
+                .getSimpleName() + " (attempt " + (currentRetries + 1) + "/" + MAX_RETRIES + ")");
         } else {
             logger.info("Non-retryable error for node: " + nodeName + " - " + error.getClass()
                 .getSimpleName());
