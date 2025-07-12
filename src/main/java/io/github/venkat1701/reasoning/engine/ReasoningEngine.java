@@ -38,18 +38,17 @@ public class ReasoningEngine {
         return strategies;
     }
 
-    public <T>LLMResponse<T> reason(ReasoningMethod reasoningMethod, ResearchContext context, Class<T> outputType) throws LLMClientException {
+    public <T> LLMResponse<T> reason(ReasoningMethod reasoningMethod, ResearchContext context, Class<T> outputType) throws LLMClientException {
         ReasoningStrategy strategy = strategies.get(reasoningMethod);
-        if(strategy == null) {
+        if (strategy == null) {
             throw new IllegalArgumentException("No strategy found for " + reasoningMethod);
         }
-
         return strategy.reason(context, outputType);
     }
 
     public <T> CompletableFuture<LLMResponse<T>> reasonAsync(ReasoningMethod method, ResearchContext context, Class<T> outputType) {
         ReasoningStrategy strategy = strategies.get(method);
-        if(strategy == null) {
+        if (strategy == null) {
             throw new IllegalArgumentException("No strategy found for " + method);
         }
         return strategy.reasonAsync(context, outputType);
@@ -78,34 +77,67 @@ public class ReasoningEngine {
         ReasoningMethod selectedMethod = selectOptimalStrategy(context);
         return reasonAsync(selectedMethod, context, outputType);
     }
-    private ReasoningMethod selectOptimalStrategy(ResearchContext context) {
-        String prompt = context.getConfig().userPrompt().toLowerCase();
-        int citationCount = context.getCitations().size();
 
-        if (prompt.contains("compare") || prompt.contains("table") || prompt.contains("data")) {
-            return ReasoningMethod.CHAIN_OF_TABLE;
-        } else if (prompt.contains("creative") || prompt.contains("brainstorm") || prompt.contains("idea")) {
-            return ReasoningMethod.CHAIN_OF_IDEAS;
-        } else {
+    private ReasoningMethod selectOptimalStrategy(ResearchContext context) {
+        String prompt = context.getConfig()
+            .userPrompt()
+            .toLowerCase();
+
+        if (prompt.contains("how does") && (prompt.contains("work") || prompt.contains("implement"))) {
             return ReasoningMethod.CHAIN_OF_THOUGHT;
         }
+
+        if (prompt.contains("cqrs") || prompt.contains("microservices") || prompt.contains("spring boot") || prompt.contains("implementation") ||
+            prompt.contains("code") || prompt.contains("example")) {
+            return ReasoningMethod.CHAIN_OF_THOUGHT;
+        }
+
+        if (prompt.contains("compare") || prompt.contains("versus") || prompt.contains("table") || prompt.contains("data")) {
+            return ReasoningMethod.CHAIN_OF_TABLE;
+        }
+
+        if (prompt.contains("creative") || prompt.contains("brainstorm") || prompt.contains("idea")) {
+            return ReasoningMethod.CHAIN_OF_IDEAS;
+        }
+
+        return ReasoningMethod.CHAIN_OF_THOUGHT;
     }
 
     private <T> LLMResponse<T> combineResults(List<LLMResponse<T>> results, ResearchContext context, Class<T> outputType) throws LLMClientException {
         StringBuilder combinedPrompt = new StringBuilder();
-        combinedPrompt.append("You are an expert research assistant.\n\n");
-        combinedPrompt.append("Your task is to **carefully synthesize** multiple independent analyses and produce a **unified, accurate, and insightful answer**.\n");
-        combinedPrompt.append("Carefully weigh the strengths of each viewpoint, resolve any contradictions if present, and prioritize clarity, factual depth, and logical structure.\n\n");
 
-        combinedPrompt.append("Question:\n").append(context.getConfig().userPrompt()).append("\n\n");
+        combinedPrompt.append("""
+            You are an expert technical research assistant specializing in software architecture and implementation.
+            
+            Your task is to synthesize multiple analyses into a unified, comprehensive response that includes:
+            1. Clear technical explanations
+            2. Complete working code examples
+            3. Practical implementation guidance
+            4. Best practices and considerations
+            
+            """);
 
+        combinedPrompt.append("ORIGINAL QUESTION:\n")
+            .append(context.getConfig()
+                .userPrompt())
+            .append("\n\n");
+
+        combinedPrompt.append("MULTIPLE ANALYSIS RESULTS:\n");
         for (int i = 0; i < results.size(); i++) {
-            combinedPrompt.append(String.format("Analysis %d:\n%s\n\n", i + 1, results.get(i).rawText()));
+            combinedPrompt.append(String.format("Analysis %d:\n%s\n\n", i + 1, results.get(i)
+                .rawText()));
         }
 
-        combinedPrompt.append("Now write a comprehensive synthesis that integrates the key insights from all analyses. ");
-        combinedPrompt.append("Ensure the response is well-structured, technically accurate, and clearly articulated. ");
-        combinedPrompt.append("If any parts conflict, resolve them logically or highlight the uncertainty with reasoning.\n");
+        combinedPrompt.append("""
+            SYNTHESIS REQUIREMENTS:
+            - Integrate the best insights from all analyses
+            - Resolve any contradictions with clear reasoning
+            - Include complete code examples from the most comprehensive analysis
+            - Ensure technical accuracy and practical applicability
+            - Structure the response for maximum clarity and usefulness
+            
+            Provide your comprehensive synthesis:
+            """);
 
         return llmClient.complete(combinedPrompt.toString(), outputType);
     }
@@ -120,6 +152,15 @@ public class ReasoningEngine {
     }
 
     public void shutdown() {
-        executor.shutdownNow();
+        try {
+            executor.shutdown();
+            if (!executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread()
+                .interrupt();
+        }
     }
 }

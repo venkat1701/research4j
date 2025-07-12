@@ -321,7 +321,7 @@ public class Research4jConfig {
 
     public static Research4jConfig createWithGemini(String apiKey) {
         return builder().geminiApiKey(apiKey)
-            .defaultModel("gemini-1.5-flash")
+            .defaultModel("gemini-2.0-flash")
             .build();
     }
 

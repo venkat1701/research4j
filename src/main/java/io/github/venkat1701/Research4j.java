@@ -37,14 +37,12 @@ public class Research4j implements AutoCloseable {
     private Research4j(Builder builder) throws ConfigurationException {
         try {
             this.config = builder.configBuilder.build();
-
             this.llmClient = createLLMClient();
             this.citationService = createCitationService();
             this.reasoningEngine = new ReasoningEngine(llmClient);
             this.agent = new DynamicResearchAgent(citationService, reasoningEngine, llmClient);
 
-            logger.info("Research4j initialized successfully");
-
+            logger.info("Research4j initialized successfully with provider: " + (config.hasApiKey(ModelType.GEMINI) ? "Gemini" : "OpenAI"));
         } catch (Exception e) {
             throw new ConfigurationException("Failed to initialize Research4j: " + e.getMessage(), e);
         }
@@ -52,13 +50,14 @@ public class Research4j implements AutoCloseable {
 
     private LLMClient createLLMClient() throws ConfigurationException, LLMClientException {
         if (config.hasApiKey(ModelType.GEMINI)) {
-            logger.info("Using Gemini AI client");
+            logger.info("Initializing Gemini AI client with model: " + config.getDefaultModel());
             return new GeminiAiClient(config);
         } else if (config.hasApiKey(ModelType.OPENAI)) {
-            logger.info("Using OpenAI client");
+            logger.info("Initializing OpenAI client with model: " + config.getDefaultModel());
             return new OpenAiClient(config);
         } else {
-            throw new ConfigurationException("No LLM provider configured. Set either GEMINI_API_KEY or OPENAI_API_KEY");
+            throw new ConfigurationException("No LLM provider configured. Please set either GEMINI_API_KEY or OPENAI_API_KEY environment variable, " +
+                "or configure them programmatically using the builder pattern.");
         }
     }
 
@@ -68,18 +67,14 @@ public class Research4j implements AutoCloseable {
 
         switch (source) {
             case GOOGLE_GEMINI -> {
-                if (!config.hasApiKey(CitationSource.GOOGLE_GEMINI)) {
-                    throw new ConfigurationException("Google Search API key required for Google citation source");
-                }
-                if (config.getGoogleCseId() == null) {
-                    throw new ConfigurationException("Google CSE ID required for Google citation source");
-                }
+                validateGoogleSearchConfig();
                 citationConfig = new CitationConfig(source, config.getGoogleSearchApiKey());
                 return new CitationService(citationConfig, config.getGoogleCseId());
             }
             case TAVILY -> {
                 if (!config.hasApiKey(CitationSource.TAVILY)) {
-                    throw new ConfigurationException("Tavily API key required for Tavily citation source");
+                    throw new ConfigurationException(
+                        "Tavily API key required for Tavily citation source. " + "Set TAVILY_API_KEY environment variable or configure via builder.");
                 }
                 citationConfig = new CitationConfig(source, config.getTavilyApiKey());
                 return new CitationService(citationConfig);
@@ -88,39 +83,54 @@ public class Research4j implements AutoCloseable {
         }
     }
 
+    private void validateGoogleSearchConfig() throws ConfigurationException {
+        if (!config.hasApiKey(CitationSource.GOOGLE_GEMINI)) {
+            throw new ConfigurationException(
+                "Google Search API key required for Google citation source. " + "Set GOOGLE_SEARCH_API_KEY environment variable or configure via builder.");
+        }
+        if (config.getGoogleCseId() == null || config.getGoogleCseId()
+            .trim()
+            .isEmpty()) {
+            throw new ConfigurationException(
+                "Google Custom Search Engine ID required for Google citation source. " + "Set GOOGLE_CSE_ID environment variable or configure via builder.");
+        }
+    }
+
     public ResearchResult research(String query) {
+        validateQuery(query);
         return research(query, createDefaultUserProfile());
     }
 
     public ResearchResult research(String query, UserProfile userProfile) {
+        validateQuery(query);
         return research(query, userProfile, config.getDefaultOutputFormat());
     }
 
     public ResearchResult research(String query, OutputFormat outputFormat) {
+        validateQuery(query);
         return research(query, createDefaultUserProfile(), outputFormat);
     }
 
     public ResearchResult research(String query, UserProfile userProfile, OutputFormat outputFormat) {
+        validateQuery(query);
+        validateUserProfile(userProfile);
+        validateOutputFormat(outputFormat);
+
         try {
-            var promptConfig = new io.github.venkat1701.core.payloads.ResearchPromptConfig(
-                query,
-                """
-                You are a highly skilled research assistant specialized in technical and academic topics.
-                Your task is to provide well-researched, structured, and deeply reasoned answers.
-                Always use reliable sources when possible, clarify uncertainties explicitly, and prioritize accuracy over speculation.
-                When dealing with technical content, prefer precision and clarity.
-                If the question lacks sufficient context, request clarification rather than assuming.""",
-                String.class,
-                outputFormat
-            );
+            logger.info("Starting research for query: " + truncateQuery(query));
+
+            var promptConfig = new io.github.venkat1701.core.payloads.ResearchPromptConfig(query, buildSystemInstruction(userProfile, outputFormat),
+                determineOutputType(outputFormat), outputFormat);
+
             var result = agent.processQuery(generateSessionId(), query, userProfile, promptConfig)
                 .get();
 
+            logger.info("Research completed successfully in " + result.getProcessingTime());
             return new ResearchResult(result, config);
 
         } catch (Exception e) {
-            logger.severe("Research failed: " + e.getMessage());
-            throw new RuntimeException("Research failed: " + e.getMessage(), e);
+            logger.severe("Research failed for query: " + truncateQuery(query) + " - " + e.getMessage());
+            throw new RuntimeException("Research processing failed: " + e.getMessage(), e);
         }
     }
 
@@ -129,15 +139,110 @@ public class Research4j implements AutoCloseable {
     }
 
     public ResearchSession createSession(UserProfile userProfile) {
+        validateUserProfile(userProfile);
         return new ResearchSession(this, generateSessionId(), userProfile);
     }
 
+    private String buildSystemInstruction(UserProfile userProfile, OutputFormat outputFormat) {
+        StringBuilder instruction = new StringBuilder();
+
+        instruction.append("You are an elite AI research assistant with expertise across multiple domains. ");
+        instruction.append("Your primary objective is to provide comprehensive, accurate, and well-researched answers ");
+        instruction.append("that demonstrate deep understanding and critical analysis.\n\n");
+
+        if (userProfile != null) {
+            instruction.append("USER PROFILE CONTEXT:\n");
+            instruction.append("- Domain: ")
+                .append(userProfile.getDomain())
+                .append("\n");
+            instruction.append("- Expertise Level: ")
+                .append(userProfile.getExpertiseLevel())
+                .append("\n");
+            instruction.append("- Preferences: ")
+                .append(String.join(", ", userProfile.getPreferences()))
+                .append("\n\n");
+        }
+
+        instruction.append("OUTPUT FORMAT REQUIREMENTS:\n");
+        switch (outputFormat) {
+            case MARKDOWN -> instruction.append(
+                "- Use clear Markdown formatting with proper headers, lists, and emphasis\n" + "- Structure content with logical sections and subsections\n" +
+                    "- Include code blocks for technical examples when relevant\n");
+            case JSON -> instruction.append("- Provide response in valid JSON format only\n" + "- Structure data logically with appropriate nesting\n" +
+                "- Ensure all JSON is properly escaped and parseable\n");
+            case TABLE -> instruction.append("- Present information in well-structured table format\n" + "- Use clear headers and logical row organization\n" +
+                "- Include summary sections where appropriate\n");
+        }
+
+        instruction.append("\nRESEARCH METHODOLOGY:\n");
+        instruction.append("1. Analyze the query thoroughly to understand all implicit and explicit requirements\n");
+        instruction.append("2. Synthesize information from provided citations with your knowledge base\n");
+        instruction.append("3. Apply critical thinking to evaluate source reliability and information quality\n");
+        instruction.append("4. Present findings with logical progression and clear reasoning\n");
+        instruction.append("5. Acknowledge limitations or uncertainties when present\n");
+        instruction.append("6. Prioritize accuracy over speculation while maintaining comprehensiveness\n\n");
+
+        instruction.append("QUALITY STANDARDS:\n");
+        instruction.append("- Ensure factual accuracy and cite sources appropriately\n");
+        instruction.append("- Maintain professional tone while being accessible\n");
+        instruction.append("- Provide sufficient detail without overwhelming the reader\n");
+        instruction.append("- Use examples and analogies to clarify complex concepts\n");
+        instruction.append("- Structure responses for optimal readability and comprehension\n");
+
+        instruction.append("CODE REQUIREMENTS:\n");
+        instruction.append("- Include complete, runnable code examples\n");
+        instruction.append("- Provide all necessary imports and dependencies\n");
+        instruction.append("- Show configuration files (application.yml, pom.xml)\n");
+        instruction.append("- Include unit tests and integration examples\n");
+        instruction.append("- Demonstrate real-world usage patterns\n\n");
+
+        return instruction.toString();
+    }
+
+    private Class<?> determineOutputType(OutputFormat format) {
+        return switch (format) {
+            case JSON -> Map.class;
+            case TABLE -> List.class;
+            default -> String.class;
+        };
+    }
+
     private UserProfile createDefaultUserProfile() {
-        return new UserProfile("default-user", "general", "intermediate", List.of("balanced"), Map.of(), List.of(), config.getDefaultOutputFormat());
+        return new UserProfile("default-user", "general", "intermediate", List.of("balanced", "comprehensive"), Map.of("general knowledge", 7, "analysis", 8),
+            List.of(), config.getDefaultOutputFormat());
     }
 
     private String generateSessionId() {
-        return "session-" + System.currentTimeMillis();
+        return "research-session-" + System.currentTimeMillis() + "-" + Integer.toHexString((int) (Math.random() * 0x10000));
+    }
+
+    private void validateQuery(String query) {
+        if (query == null || query.trim()
+            .isEmpty()) {
+            throw new IllegalArgumentException("Research query cannot be null or empty");
+        }
+        if (query.length() > 10000) {
+            throw new IllegalArgumentException("Research query exceeds maximum length of 10,000 characters");
+        }
+    }
+
+    private void validateUserProfile(UserProfile userProfile) {
+        if (userProfile == null) {
+            throw new IllegalArgumentException("User profile cannot be null");
+        }
+    }
+
+    private void validateOutputFormat(OutputFormat outputFormat) {
+        if (outputFormat == null) {
+            throw new IllegalArgumentException("Output format cannot be null");
+        }
+    }
+
+    private String truncateQuery(String query) {
+        if (query == null) {
+            return "null";
+        }
+        return query.length() > 100 ? query.substring(0, 100) + "..." : query;
     }
 
     public Research4jConfig getConfig() {
@@ -146,8 +251,16 @@ public class Research4j implements AutoCloseable {
 
     public boolean isHealthy() {
         try {
-            return llmClient instanceof GeminiAiClient ? ((GeminiAiClient) llmClient).isHealthy() :
+            boolean llmHealthy = llmClient instanceof GeminiAiClient ? ((GeminiAiClient) llmClient).isHealthy() :
                 llmClient instanceof OpenAiClient ? ((OpenAiClient) llmClient).isHealthy() : false;
+
+            if (!llmHealthy) {
+                logger.warning("LLM client health check failed");
+                return false;
+            }
+
+            return true;
+
         } catch (Exception e) {
             logger.warning("Health check failed: " + e.getMessage());
             return false;
@@ -159,6 +272,9 @@ public class Research4j implements AutoCloseable {
         try {
             if (agent != null) {
                 agent.shutdown();
+            }
+            if (reasoningEngine != null) {
+                reasoningEngine.shutdown();
             }
             if (llmClient instanceof AutoCloseable) {
                 ((AutoCloseable) llmClient).close();
@@ -291,4 +407,3 @@ public class Research4j implements AutoCloseable {
             .build();
     }
 }
-
