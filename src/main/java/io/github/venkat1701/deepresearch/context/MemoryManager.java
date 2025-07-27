@@ -1,9 +1,12 @@
 package io.github.venkat1701.deepresearch.context;
 
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -203,20 +206,30 @@ public class MemoryManager {
     }
 
     private double calculateSimilarity(String text1, String text2) {
-        
-        String[] words1 = text1.toLowerCase().split("\\W+");
-        String[] words2 = text2.toLowerCase().split("\\W+");
+        try {
+            
+            String[] words1 = text1.toLowerCase().split("\\W+");
+            String[] words2 = text2.toLowerCase().split("\\W+");
 
-        java.util.Set<String> set1 = java.util.Set.of(words1);
-        java.util.Set<String> set2 = java.util.Set.of(words2);
+            
+            Set<String> set1 = new HashSet<>(Arrays.asList(words1));
+            Set<String> set2 = new HashSet<>(Arrays.asList(words2));
 
-        java.util.Set<String> intersection = new java.util.HashSet<>(set1);
-        intersection.retainAll(set2);
+            
+            Set<String> intersection = new HashSet<>(set1);
+            intersection.retainAll(set2);
 
-        java.util.Set<String> union = new java.util.HashSet<>(set1);
-        union.addAll(set2);
+            
+            Set<String> union = new HashSet<>(set1);
+            union.addAll(set2);
 
-        return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
+            
+            return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
+
+        } catch (Exception e) {
+            logger.warning("Error calculating similarity: " + e.getMessage());
+            return 0.0;
+        }
     }
 
     private String extractMainConcept(String text) {

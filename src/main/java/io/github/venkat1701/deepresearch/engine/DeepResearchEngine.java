@@ -3,6 +3,7 @@ package io.github.venkat1701.deepresearch.engine;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -350,7 +351,10 @@ public class DeepResearchEngine {
             question.setResearched(true);
 
         } catch (Exception e) {
-            logger.warning("Error researching question '" + question.getQuestion() + "': " + e.getMessage());
+            System.out.println(e);
+            System.out.println(Arrays.stream(Arrays.stream(e.getStackTrace()).toArray()).collect(Collectors.toList()));
+            System.out.println(e.getCause());
+            System.out.println(context.getAllInsights());
             
             question.setResearched(false);
         }
