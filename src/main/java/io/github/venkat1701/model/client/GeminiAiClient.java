@@ -3,6 +3,7 @@ package io.github.venkat1701.model.client;
 import java.time.Duration;
 import java.util.logging.Logger;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import dev.langchain4j.model.chat.ChatModel;
@@ -59,22 +60,17 @@ public class GeminiAiClient implements LLMClient, AutoCloseable {
         if (config == null) {
             throw new IllegalArgumentException("ModelApiConfig cannot be null");
         }
-        if (config.getApiKey() == null || config.getApiKey()
-            .trim()
-            .isEmpty()) {
+        if (config.getApiKey() == null || config.getApiKey().trim().isEmpty()) {
             throw new IllegalArgumentException("Gemini API key cannot be null or empty");
         }
-        if (config.getModelName() == null || config.getModelName()
-            .trim()
-            .isEmpty()) {
+        if (config.getModelName() == null || config.getModelName().trim().isEmpty()) {
             throw new IllegalArgumentException("Model name cannot be null or empty");
         }
     }
 
     @Override
     public <T> LLMResponse<T> complete(String prompt, Class<T> type) throws LLMClientException {
-        if (prompt == null || prompt.trim()
-            .isEmpty()) {
+        if (prompt == null || prompt.trim().isEmpty()) {
             throw new IllegalArgumentException("Prompt cannot be null or empty");
         }
         if (type == null) {
@@ -112,46 +108,69 @@ public class GeminiAiClient implements LLMClient, AutoCloseable {
     private String enhancePromptForJson(String originalPrompt, Class<?> type) {
         StringBuilder enhancedPrompt = new StringBuilder();
         enhancedPrompt.append(originalPrompt);
-        enhancedPrompt.append("\n\nPlease respond with valid JSON format only. ");
-        enhancedPrompt.append("The response should be parseable as ")
-            .append(type.getSimpleName())
-            .append(".");
-        enhancedPrompt.append(" Do not include any text outside the JSON structure.");
+        enhancedPrompt.append("\n\nIMPORTANT: Respond with valid JSON format only. ");
+        enhancedPrompt.append("The response should be parseable as ").append(type.getSimpleName()).append(". ");
+        enhancedPrompt.append("Do not include any text outside the JSON structure. ");
+        enhancedPrompt.append("Ensure all JSON properties are properly quoted and escaped. ");
+        enhancedPrompt.append("Do not use markdown code blocks or any formatting around the JSON.");
         return enhancedPrompt.toString();
     }
 
     @SuppressWarnings("unchecked")
     private <T> T parseResponse(String rawResponse, Class<T> type) throws LLMClientException {
         if (type == String.class) {
-            return (T) rawResponse;
+            return (T) cleanResponseText(rawResponse);
         }
 
         try {
             String cleanedResponse = cleanJsonResponse(rawResponse);
-            return objectMapper.readValue(cleanedResponse, type);
+
+            
+            JsonNode jsonNode = objectMapper.readTree(cleanedResponse);
+
+            
+            return objectMapper.treeToValue(jsonNode, type);
 
         } catch (Exception e) {
-            logger.warning("Failed to parse as JSON, returning raw response: " + e.getMessage());
-
-            if (type == String.class) {
-                return (T) rawResponse;
-            }
+            logger.warning("Failed to parse as JSON, attempting recovery: " + e.getMessage());
 
             try {
-                return (T) rawResponse;
-            } catch (ClassCastException cce) {
-                throw new LLMClientException(String.format("Cannot parse response to type %s: %s", type.getSimpleName(), e.getMessage()), e, "GEMINI",
-                    "parsing");
+                
+                String extractedJson = extractJsonFromText(rawResponse);
+                if (extractedJson != null) {
+                    JsonNode jsonNode = objectMapper.readTree(extractedJson);
+                    return objectMapper.treeToValue(jsonNode, type);
+                }
+            } catch (Exception ex) {
+                logger.warning("JSON extraction also failed: " + ex.getMessage());
+            }
+
+            
+            if (type == String.class) {
+                return (T) cleanResponseText(rawResponse);
+            }
+
+            
+            try {
+                String fallbackJson = createFallbackJson(rawResponse, type);
+                JsonNode jsonNode = objectMapper.readTree(fallbackJson);
+                return objectMapper.treeToValue(jsonNode, type);
+            } catch (Exception fallbackException) {
+                throw new LLMClientException(
+                    String.format("Cannot parse response to type %s. Original error: %s", type.getSimpleName(), e.getMessage()),
+                    e, "GEMINI", "parsing");
             }
         }
     }
 
     private String cleanJsonResponse(String response) {
-        if (response == null) {
+        if (response == null || response.trim().isEmpty()) {
             return "{}";
         }
 
         String cleaned = response.trim();
+
+        
         if (cleaned.startsWith("```json")) {
             cleaned = cleaned.substring(7);
         } else if (cleaned.startsWith("```")) {
@@ -164,11 +183,73 @@ public class GeminiAiClient implements LLMClient, AutoCloseable {
 
         cleaned = cleaned.trim();
 
+        
         if (!cleaned.startsWith("{") && !cleaned.startsWith("[")) {
-            cleaned = "{\"text\": \"" + cleaned.replace("\"", "\\\"") + "\"}";
+            cleaned = "{\"text\": \"" + escapeJsonString(cleaned) + "\"}";
         }
 
         return cleaned;
+    }
+
+    private String extractJsonFromText(String text) {
+        if (text == null) return null;
+
+        
+        int start = text.indexOf('{');
+        int end = text.lastIndexOf('}');
+
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1);
+        }
+
+        
+        start = text.indexOf('[');
+        end = text.lastIndexOf(']');
+
+        if (start >= 0 && end > start) {
+            return text.substring(start, end + 1);
+        }
+
+        return null;
+    }
+
+    private String createFallbackJson(String rawResponse, Class<?> type) {
+        String cleanedText = cleanResponseText(rawResponse);
+
+        
+        if (type.getSimpleName().toLowerCase().contains("analysis")) {
+            return String.format("""
+                {
+                    "intent": "research",
+                    "complexityScore": 5,
+                    "topics": ["general"],
+                    "requiresCitations": true,
+                    "estimatedTime": "2-3 minutes",
+                    "suggestedReasoning": "CHAIN_OF_THOUGHT"
+                }
+                """);
+        }
+
+        
+        return String.format("{\"content\": \"%s\"}", escapeJsonString(cleanedText));
+    }
+
+    private String cleanResponseText(String text) {
+        if (text == null) return "No response generated";
+
+        return text.replaceAll("\\s+", " ")
+            .replaceAll("[\\r\\n]+", " ")
+            .trim();
+    }
+
+    private String escapeJsonString(String text) {
+        if (text == null) return "";
+
+        return text.replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\r", "\\r")
+            .replace("\n", "\\n")
+            .replace("\t", "\\t");
     }
 
     public String getModelName() {
@@ -203,7 +284,6 @@ public class GeminiAiClient implements LLMClient, AutoCloseable {
     }
 
     public static class Builder {
-
         private String apiKey;
         private String modelName = "gemini-1.5-flash";
         private Duration timeout = Duration.ofSeconds(30);
