@@ -193,4 +193,11 @@ public class CitationResult {
     public boolean isHighRelevance() {
         return relevanceScore >= 0.7;
     }
+
+    @Override
+    public String toString() {
+        return "CitationResult{" + "title='" + title + '\'' + ", snippet='" + snippet + '\'' + ", content='" + content + '\'' + ", url='" + url + '\'' +
+            ", relevanceScore=" + relevanceScore + ", retrievedAt=" + retrievedAt + ", language='" + language + '\'' + ", domain='" + domain + '\'' +
+            ", wordCount=" + wordCount + '}';
+    }
 }
