@@ -3,6 +3,7 @@ package io.github.venkat1701;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 import io.github.venkat1701.agent.ResearchResult;
@@ -15,6 +16,10 @@ import io.github.venkat1701.core.contracts.LLMClient;
 import io.github.venkat1701.core.enums.ModelType;
 import io.github.venkat1701.core.enums.OutputFormat;
 import io.github.venkat1701.core.enums.ReasoningMethod;
+import io.github.venkat1701.deepresearch.engine.DeepResearchEngine;
+import io.github.venkat1701.deepresearch.models.DeepResearchConfig;
+import io.github.venkat1701.deepresearch.models.DeepResearchProgress;
+import io.github.venkat1701.deepresearch.models.DeepResearchResult;
 import io.github.venkat1701.exceptions.citation.CitationException;
 import io.github.venkat1701.exceptions.client.LLMClientException;
 import io.github.venkat1701.exceptions.config.ConfigurationException;
@@ -34,6 +39,9 @@ public class Research4j implements AutoCloseable {
     private final CitationService citationService;
     private final ReasoningEngine reasoningEngine;
 
+    
+    private final DeepResearchEngine deepResearchEngine;
+
     private Research4j(Builder builder) throws ConfigurationException {
         try {
             this.config = builder.configBuilder.build();
@@ -42,7 +50,11 @@ public class Research4j implements AutoCloseable {
             this.reasoningEngine = new ReasoningEngine(llmClient);
             this.agent = new DynamicResearchAgent(citationService, reasoningEngine, llmClient);
 
+            
+            this.deepResearchEngine = new DeepResearchEngine(llmClient, citationService);
+
             logger.info("Research4j initialized successfully with provider: " + (config.hasApiKey(ModelType.GEMINI) ? "Gemini" : "OpenAI"));
+            logger.info("Deep Research capabilities enabled");
         } catch (Exception e) {
             throw new ConfigurationException("Failed to initialize Research4j: " + e.getMessage(), e);
         }
@@ -96,6 +108,7 @@ public class Research4j implements AutoCloseable {
         }
     }
 
+    
     public ResearchResult research(String query) {
         validateQuery(query);
         return research(query, createDefaultUserProfile());
@@ -117,7 +130,7 @@ public class Research4j implements AutoCloseable {
         validateOutputFormat(outputFormat);
 
         try {
-            logger.info("Starting research for query: " + truncateQuery(query));
+            logger.info("Starting standard research for query: " + truncateQuery(query));
 
             var promptConfig = new io.github.venkat1701.core.payloads.ResearchPromptConfig(query, buildSystemInstruction(userProfile, outputFormat),
                 determineOutputType(outputFormat), outputFormat);
@@ -125,15 +138,127 @@ public class Research4j implements AutoCloseable {
             var result = agent.processQuery(generateSessionId(), query, userProfile, promptConfig)
                 .get();
 
-            logger.info("Research completed successfully in " + result.getProcessingTime());
+            logger.info("Standard research completed successfully in " + result.getProcessingTime());
             return new ResearchResult(result, config);
 
         } catch (Exception e) {
-            logger.severe("Research failed for query: " + truncateQuery(query) + " - " + e.getMessage());
+            logger.severe("Standard research failed for query: " + truncateQuery(query) + " - " + e.getMessage());
             throw new RuntimeException("Research processing failed: " + e.getMessage(), e);
         }
     }
 
+    
+
+    
+    public CompletableFuture<DeepResearchResult> deepResearch(String query) {
+        return deepResearch(query, createDefaultUserProfile(), DeepResearchConfig.comprehensiveConfig());
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> deepResearch(String query, UserProfile userProfile) {
+        return deepResearch(query, userProfile, DeepResearchConfig.comprehensiveConfig());
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> deepResearch(String query, DeepResearchConfig deepConfig) {
+        return deepResearch(query, createDefaultUserProfile(), deepConfig);
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> deepResearch(String query, UserProfile userProfile, DeepResearchConfig deepConfig) {
+        validateQuery(query);
+        validateUserProfile(userProfile);
+
+        if (deepConfig == null) {
+            deepConfig = DeepResearchConfig.comprehensiveConfig();
+        }
+
+        logger.info("Starting deep research for query: " + truncateQuery(query));
+        logger.info("Deep research configuration: " + deepConfig.getResearchDepth() + " depth, " +
+            deepConfig.getMaxSources() + " max sources, " + deepConfig.getMaxDuration());
+
+        return deepResearchEngine.startDeepResearch(query, userProfile, deepConfig);
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> quickDeepResearch(String query) {
+        return deepResearch(query, createDefaultUserProfile(), DeepResearchConfig.standardConfig());
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> exhaustiveDeepResearch(String query) {
+        return deepResearch(query, createDefaultUserProfile(), DeepResearchConfig.exhaustiveConfig());
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> technicalDeepResearch(String query) {
+        UserProfile techProfile = new UserProfile(
+            "tech-researcher",
+            "software-engineering",
+            "expert",
+            List.of("technical", "implementation", "code-heavy"),
+            Map.of("software architecture", 9, "implementation", 9, "best practices", 8),
+            List.of(),
+            OutputFormat.MARKDOWN
+        );
+
+        DeepResearchConfig techConfig = DeepResearchConfig.builder()
+            .researchDepth(DeepResearchConfig.ResearchDepth.COMPREHENSIVE)
+            .researchScope(DeepResearchConfig.ResearchScope.FOCUSED)
+            .maxDuration(Duration.ofMinutes(20))
+            .maxSources(60)
+            .maxQuestions(15)
+            .focusAreas(List.of("implementation", "architecture", "best-practices", "security", "performance"))
+            .build();
+
+        return deepResearch(query, techProfile, techConfig);
+    }
+
+    
+    public CompletableFuture<DeepResearchResult> academicDeepResearch(String query) {
+        UserProfile academicProfile = new UserProfile(
+            "academic-researcher",
+            "academic",
+            "expert",
+            List.of("comprehensive", "citation-heavy", "peer-reviewed"),
+            Map.of("research methodology", 9, "academic writing", 8, "peer review", 9),
+            List.of(),
+            OutputFormat.MARKDOWN
+        );
+
+        DeepResearchConfig academicConfig = DeepResearchConfig.builder()
+            .researchDepth(DeepResearchConfig.ResearchDepth.EXHAUSTIVE)
+            .researchScope(DeepResearchConfig.ResearchScope.INTERDISCIPLINARY)
+            .maxDuration(Duration.ofMinutes(25))
+            .maxSources(80)
+            .maxQuestions(20)
+            .enableCrossValidation(true)
+            .build();
+
+        return deepResearch(query, academicProfile, academicConfig);
+    }
+
+    
+    public DeepResearchProgress getDeepResearchProgress(String sessionId) {
+        return deepResearchEngine.getProgress(sessionId);
+    }
+
+    
+    public Map<String, DeepResearchProgress> getAllActiveDeepResearch() {
+        return deepResearchEngine.getAllActiveResearch();
+    }
+
+    
+    public boolean cancelDeepResearch(String sessionId) {
+        return deepResearchEngine.cancelResearch(sessionId);
+    }
+
+    
+    public io.github.venkat1701.deepresearch.context.MemoryManager getMemoryManager() {
+        return deepResearchEngine.getMemoryManager();
+    }
+
+    
     public ResearchSession createSession() {
         return new ResearchSession(this, generateSessionId());
     }
@@ -143,6 +268,64 @@ public class Research4j implements AutoCloseable {
         return new ResearchSession(this, generateSessionId(), userProfile);
     }
 
+    
+    public ResearchSession createEnhancedSession() {
+        return new ResearchSession(this, generateSessionId());
+    }
+
+    
+    public ResearchSession createEnhancedSession(UserProfile userProfile) {
+        validateUserProfile(userProfile);
+        return new ResearchSession(this, generateSessionId(), userProfile);
+    }
+
+    
+
+    
+    public static Research4j createForSoftwareDevelopment(String geminiKey, String tavilyKey) throws ConfigurationException {
+        return builder()
+            .withGemini(geminiKey, "gemini-2.0-flash")
+            .withTavily(tavilyKey)
+            .defaultReasoning(ReasoningMethod.CHAIN_OF_THOUGHT)
+            .defaultOutputFormat(OutputFormat.MARKDOWN)
+            .maxCitations(20)
+            .timeout(Duration.ofMinutes(3))
+            .build();
+    }
+
+    
+    public static Research4j createForAcademicResearch(String geminiKey, String searchKey, String cseId) throws ConfigurationException {
+        return builder().withGemini(geminiKey, "gemini-1.5-flash")
+            .withGoogleSearch(searchKey, cseId)
+            .defaultReasoning(ReasoningMethod.CHAIN_OF_THOUGHT)
+            .maxCitations(15)
+            .timeout(Duration.ofMinutes(2))
+            .build();
+    }
+
+    
+    public static Research4j createForBusinessAnalysis(String openaiKey, String tavilyKey) throws ConfigurationException {
+        return builder().withOpenAI(openaiKey, "gpt-4")
+            .withTavily(tavilyKey)
+            .defaultReasoning(ReasoningMethod.CHAIN_OF_TABLE)
+            .defaultOutputFormat(OutputFormat.TABLE)
+            .maxCitations(12)
+            .build();
+    }
+
+    
+    public static Research4j createForDeepResearch(String geminiKey, String searchKey, String cseId) throws ConfigurationException {
+        return builder()
+            .withGemini(geminiKey, "gemini-1.5-pro")
+            .withGoogleSearch(searchKey, cseId)
+            .defaultReasoning(ReasoningMethod.CHAIN_OF_THOUGHT)
+            .maxCitations(25)
+            .timeout(Duration.ofMinutes(5))
+            .enableDebug()
+            .build();
+    }
+
+    
     private String buildSystemInstruction(UserProfile userProfile, OutputFormat outputFormat) {
         StringBuilder instruction = new StringBuilder();
 
@@ -276,6 +459,9 @@ public class Research4j implements AutoCloseable {
             if (reasoningEngine != null) {
                 reasoningEngine.shutdown();
             }
+            if (deepResearchEngine != null) {
+                deepResearchEngine.shutdown();
+            }
             if (llmClient instanceof AutoCloseable) {
                 ((AutoCloseable) llmClient).close();
             }
@@ -386,24 +572,6 @@ public class Research4j implements AutoCloseable {
     public static Research4j createWithOpenAI(String openaiKey, String tavilyKey) throws ConfigurationException {
         return builder().withOpenAI(openaiKey)
             .withTavily(tavilyKey)
-            .build();
-    }
-
-    public static Research4j createForAcademicResearch(String geminiKey, String searchKey, String cseId) throws ConfigurationException {
-        return builder().withGemini(geminiKey, "gemini-1.5-flash")
-            .withGoogleSearch(searchKey, cseId)
-            .defaultReasoning(ReasoningMethod.CHAIN_OF_THOUGHT)
-            .maxCitations(15)
-            .timeout(Duration.ofMinutes(2))
-            .build();
-    }
-
-    public static Research4j createForBusinessAnalysis(String openaiKey, String tavilyKey) throws ConfigurationException {
-        return builder().withOpenAI(openaiKey, "gpt-4")
-            .withTavily(tavilyKey)
-            .defaultReasoning(ReasoningMethod.CHAIN_OF_TABLE)
-            .defaultOutputFormat(OutputFormat.TABLE)
-            .maxCitations(12)
             .build();
     }
 }
