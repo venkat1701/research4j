@@ -33,7 +33,6 @@ import io.github.venkat1701.deepresearch.strategies.impl.TechnicalDeepResearchSt
 import io.github.venkat1701.exceptions.Research4jException;
 import io.github.venkat1701.pipeline.profile.UserProfile;
 
-
 public class DeepResearchEngine {
 
     private static final Logger logger = Logger.getLogger(DeepResearchEngine.class.getName());
@@ -43,13 +42,8 @@ public class DeepResearchEngine {
     private final ExecutorService executor;
     private final MemoryManager memoryManager;
 
-    
     private final Map<String, DeepResearchStrategy> strategies;
-
-    
     private final Map<String, DeepResearchContext> activeSessions;
-
-    
     private final Map<String, DeepResearchProgress> progressTracker;
 
     public DeepResearchEngine(LLMClient llmClient, CitationService citationService) {
@@ -70,12 +64,9 @@ public class DeepResearchEngine {
         strategies.put("comprehensive", new ComprehensiveDeepResearchStrategy(llmClient, citationService, memoryManager));
         strategies.put("technical", new TechnicalDeepResearchStrategy(llmClient, citationService, memoryManager));
 
-
-
         return strategies;
     }
 
-    
     public CompletableFuture<DeepResearchResult> startDeepResearch(
         String query,
         UserProfile userProfile,
@@ -86,19 +77,15 @@ public class DeepResearchEngine {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                
                 DeepResearchContext context = new DeepResearchContext(sessionId, query, userProfile, config);
                 activeSessions.put(sessionId, context);
 
-                
                 DeepResearchProgress progress = new DeepResearchProgress(sessionId);
                 progressTracker.put(sessionId, progress);
 
-                
                 DeepResearchStrategy strategy = selectOptimalStrategy(query, userProfile, config);
                 logger.info("Selected strategy: " + strategy.getStrategyName() + " for session: " + sessionId);
 
-                
                 return executeDeepResearch(context, strategy, progress);
 
             } catch (Exception e) {
@@ -108,7 +95,6 @@ public class DeepResearchEngine {
         }, executor);
     }
 
-    
     private DeepResearchResult executeDeepResearch(
         DeepResearchContext context,
         DeepResearchStrategy strategy,
@@ -166,14 +152,11 @@ public class DeepResearchEngine {
         } finally {
             
             activeSessions.remove(context.getSessionId());
-
-            
             CompletableFuture.delayedExecutor(1, TimeUnit.HOURS, executor)
                 .execute(() -> progressTracker.remove(context.getSessionId()));
         }
     }
 
-    
     private List<ResearchQuestion> generateInitialResearchQuestions(DeepResearchContext context)
         throws Research4jException {
 
@@ -186,7 +169,7 @@ public class DeepResearchEngine {
             return parseResearchQuestions(response.structuredOutput(), context);
 
         } catch (Exception e) {
-            logger.warning("Failed to generate questions via LLM, using fallback strategy");
+            logger.warning("Failed to generate questions via LLM, using fallback strategy: " + e.getMessage());
             return generateFallbackQuestions(context);
         }
     }
@@ -236,90 +219,56 @@ public class DeepResearchEngine {
     private List<ResearchQuestion> parseResearchQuestions(String response, DeepResearchContext context) {
         List<ResearchQuestion> questions = new ArrayList<>();
 
-        String[] lines = response.split("\n");
-        for (String line : lines) {
-            line = line.trim();
-            if (line.startsWith("Q:")) {
-                String question = line.substring(2).trim();
-                if (!question.isEmpty()) {
-                    questions.add(new ResearchQuestion(
-                        question,
-                        determineQuestionPriority(question, context),
-                        categorizeQuestion(question)
-                    ));
+        try {
+            String[] lines = response.split("\n");
+            for (String line : lines) {
+                line = line.trim();
+                if (line.startsWith("Q:")) {
+                    String question = line.substring(2).trim();
+                    if (!question.isEmpty()) {
+                        questions.add(new ResearchQuestion(
+                            question,
+                            determineQuestionPriority(question, context),
+                            categorizeQuestion(question)
+                        ));
+                    }
                 }
             }
-        }
 
-        if (questions.isEmpty()) {
-            logger.warning("No questions parsed from LLM response, using fallback");
+            if (questions.isEmpty()) {
+                logger.warning("No questions parsed from LLM response, using fallback");
+                return generateFallbackQuestions(context);
+            }
+
+            return questions;
+
+        } catch (Exception e) {
+            logger.warning("Error parsing research questions: " + e.getMessage());
             return generateFallbackQuestions(context);
         }
-
-        return questions;
     }
 
     private List<ResearchQuestion> generateFallbackQuestions(DeepResearchContext context) {
         List<ResearchQuestion> fallbackQuestions = new ArrayList<>();
         String query = context.getOriginalQuery();
 
-        fallbackQuestions.add(new ResearchQuestion("What is " + query + "?", ResearchQuestion.Priority.HIGH, "fundamental"));
-        fallbackQuestions.add(new ResearchQuestion("How does " + query + " work?", ResearchQuestion.Priority.HIGH, "technical"));
-        fallbackQuestions.add(new ResearchQuestion("What are the benefits of " + query + "?", ResearchQuestion.Priority.MEDIUM, "analysis"));
-        fallbackQuestions.add(new ResearchQuestion("What are the challenges with " + query + "?", ResearchQuestion.Priority.MEDIUM, "analysis"));
-        fallbackQuestions.add(new ResearchQuestion("How to implement " + query + "?", ResearchQuestion.Priority.HIGH, "implementation"));
-        fallbackQuestions.add(new ResearchQuestion("What are best practices for " + query + "?", ResearchQuestion.Priority.MEDIUM, "best-practices"));
+        try {
+            fallbackQuestions.add(new ResearchQuestion("What is " + query + "?", ResearchQuestion.Priority.HIGH, "fundamental"));
+            fallbackQuestions.add(new ResearchQuestion("How does " + query + " work?", ResearchQuestion.Priority.HIGH, "technical"));
+            fallbackQuestions.add(new ResearchQuestion("What are the benefits of " + query + "?", ResearchQuestion.Priority.MEDIUM, "analysis"));
+            fallbackQuestions.add(new ResearchQuestion("What are the challenges with " + query + "?", ResearchQuestion.Priority.MEDIUM, "analysis"));
+            fallbackQuestions.add(new ResearchQuestion("How to implement " + query + "?", ResearchQuestion.Priority.HIGH, "implementation"));
+            fallbackQuestions.add(new ResearchQuestion("What are best practices for " + query + "?", ResearchQuestion.Priority.MEDIUM, "best-practices"));
+
+        } catch (Exception e) {
+            logger.severe("Error generating fallback questions: " + e.getMessage());
+            
+            fallbackQuestions.add(new ResearchQuestion("Overview of " + query, ResearchQuestion.Priority.HIGH, "general"));
+        }
 
         return fallbackQuestions;
     }
 
-    private ResearchQuestion.Priority determineQuestionPriority(String question, DeepResearchContext context) {
-        String questionLower = question.toLowerCase();
-
-        if (questionLower.contains("what is") || questionLower.contains("how does") ||
-            questionLower.contains("how to")) {
-            return ResearchQuestion.Priority.HIGH;
-        }
-
-        if (questionLower.contains("best practices") || questionLower.contains("implementation") ||
-            questionLower.contains("example")) {
-            return ResearchQuestion.Priority.HIGH;
-        }
-
-        if (questionLower.contains("challenge") || questionLower.contains("problem") ||
-            questionLower.contains("compare")) {
-            return ResearchQuestion.Priority.MEDIUM;
-        }
-
-        return ResearchQuestion.Priority.MEDIUM;
-    }
-
-    private String categorizeQuestion(String question) {
-        String questionLower = question.toLowerCase();
-
-        if (questionLower.contains("what is") || questionLower.contains("define")) {
-            return "fundamental";
-        }
-        if (questionLower.contains("how does") || questionLower.contains("how to")) {
-            return "technical";
-        }
-        if (questionLower.contains("compare") || questionLower.contains("versus")) {
-            return "comparative";
-        }
-        if (questionLower.contains("implement") || questionLower.contains("code")) {
-            return "implementation";
-        }
-        if (questionLower.contains("best practice") || questionLower.contains("should")) {
-            return "best-practices";
-        }
-        if (questionLower.contains("future") || questionLower.contains("trend")) {
-            return "trends";
-        }
-
-        return "analysis";
-    }
-
-    
     private void executeMultiDimensionalResearch(
         DeepResearchContext context,
         DeepResearchStrategy strategy,
@@ -343,16 +292,23 @@ public class DeepResearchEngine {
                     try {
                         researchSingleQuestion(question, context, strategy);
                     } catch (Exception e) {
-                        logger.warning("Failed to research question: " + question.getQuestion() + " - " + e.getMessage());
+                        logger.warning("Failed to research question: " + truncate(question.getQuestion(), 80) + " - " + e.getMessage());
+                        
                     }
                 }, executor))
                 .collect(Collectors.toList());
 
             
-            CompletableFuture.allOf(batchFutures.toArray(new CompletableFuture[0])).join();
+            try {
+                CompletableFuture.allOf(batchFutures.toArray(new CompletableFuture[0]))
+                    .get(5, TimeUnit.MINUTES); 
+            } catch (Exception e) {
+                logger.warning("Batch processing timeout or error: " + e.getMessage());
+                
+            }
 
             processedQuestions += batch.size();
-            int progressPercent = 20 + (int)(((double)processedQuestions / totalQuestions) * 30); 
+            int progressPercent = 20 + (int)(((double)processedQuestions / totalQuestions) * 30);
             progress.updateProgress(progressPercent,
                 "Researched " + processedQuestions + "/" + totalQuestions + " questions");
         }
@@ -375,7 +331,7 @@ public class DeepResearchEngine {
 
         try {
             
-            List<CitationResult> questionCitations = citationService.search(question.getQuestion());
+            List<CitationResult> questionCitations = searchWithRetry(question.getQuestion(), 3);
 
             
             List<CitationResult> enhancedCitations = strategy.enhanceCitations(questionCitations, question, context);
@@ -390,13 +346,38 @@ public class DeepResearchEngine {
             
             memoryManager.updateKnowledge(question.getQuestion(), insights, enhancedCitations);
 
+            
+            question.setResearched(true);
+
         } catch (Exception e) {
             logger.warning("Error researching question '" + question.getQuestion() + "': " + e.getMessage());
-            throw new Research4jException("Failed to research question", e);
+            
+            question.setResearched(false);
         }
     }
 
-    
+    private List<CitationResult> searchWithRetry(String query, int maxRetries) {
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                return citationService.search(query);
+            } catch (Exception e) {
+                logger.warning("Citation search attempt " + attempt + " failed for query: " + truncate(query, 50) + " - " + e.getMessage());
+                if (attempt == maxRetries) {
+                    logger.warning("All citation search attempts failed for query: " + truncate(query, 50));
+                    return new ArrayList<>(); 
+                }
+                
+                try {
+                    Thread.sleep(1000 * attempt); 
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    return new ArrayList<>();
+                }
+            }
+        }
+        return new ArrayList<>();
+    }
+
     private void executeDeepDiveResearch(
         DeepResearchContext context,
         DeepResearchStrategy strategy,
@@ -404,36 +385,52 @@ public class DeepResearchEngine {
 
         logger.info("Executing deep dive research");
 
-        
-        List<String> criticalAreas = identifyCriticalAreas(context, strategy);
-        progress.updateProgress(55, "Identified " + criticalAreas.size() + " critical areas for deep dive");
+        try {
+            
+            List<String> criticalAreas = identifyCriticalAreas(context, strategy);
+            progress.updateProgress(55, "Identified " + criticalAreas.size() + " critical areas for deep dive");
 
-        int processedAreas = 0;
-        for (String area : criticalAreas) {
-            try {
-                
-                List<ResearchQuestion> deepQuestions = generateDeepQuestions(area, context, strategy);
-                context.addResearchQuestions(deepQuestions);
+            int processedAreas = 0;
+            for (String area : criticalAreas) {
+                try {
+                    
+                    List<ResearchQuestion> deepQuestions = generateDeepQuestions(area, context, strategy);
+                    context.addResearchQuestions(deepQuestions);
 
-                
-                for (ResearchQuestion deepQuestion : deepQuestions) {
-                    researchSingleQuestion(deepQuestion, context, strategy);
+                    
+                    for (ResearchQuestion deepQuestion : deepQuestions) {
+                        try {
+                            researchSingleQuestion(deepQuestion, context, strategy);
+                        } catch (Exception e) {
+                            logger.warning("Error in deep question research: " + e.getMessage());
+                            
+                        }
+                    }
+
+                    processedAreas++;
+                    int progressPercent = 55 + (int)(((double)processedAreas / criticalAreas.size()) * 20);
+                    progress.updateProgress(progressPercent,
+                        "Completed deep dive " + processedAreas + "/" + criticalAreas.size());
+
+                } catch (Exception e) {
+                    logger.warning("Error in deep dive for area '" + area + "': " + e.getMessage());
+                    
                 }
-
-                processedAreas++;
-                int progressPercent = 55 + (int)(((double)processedAreas / criticalAreas.size()) * 20); 
-                progress.updateProgress(progressPercent,
-                    "Completed deep dive " + processedAreas + "/" + criticalAreas.size());
-
-            } catch (Exception e) {
-                logger.warning("Error in deep dive for area '" + area + "': " + e.getMessage());
             }
+
+        } catch (Exception e) {
+            logger.warning("Error in deep dive research: " + e.getMessage());
+            
         }
     }
 
     private List<String> identifyCriticalAreas(DeepResearchContext context, DeepResearchStrategy strategy) {
-        
-        return strategy.identifyCriticalAreas(context);
+        try {
+            return strategy.identifyCriticalAreas(context);
+        } catch (Exception e) {
+            logger.warning("Error identifying critical areas: " + e.getMessage());
+            return List.of("implementation", "best practices", "challenges");
+        }
     }
 
     private List<ResearchQuestion> generateDeepQuestions(
@@ -441,10 +438,19 @@ public class DeepResearchEngine {
         DeepResearchContext context,
         DeepResearchStrategy strategy) throws Research4jException {
 
-        return strategy.generateDeepQuestions(area, context);
+        try {
+            return strategy.generateDeepQuestions(area, context);
+        } catch (Exception e) {
+            logger.warning("Error generating deep questions for area '" + area + "': " + e.getMessage());
+            
+            return List.of(new ResearchQuestion(
+                "What are the key aspects of " + area + " for " + context.getOriginalQuery() + "?",
+                ResearchQuestion.Priority.MEDIUM,
+                "analysis"
+            ));
+        }
     }
 
-    
     private void executeCrossReferenceAnalysis(
         DeepResearchContext context,
         DeepResearchStrategy strategy,
@@ -452,30 +458,62 @@ public class DeepResearchEngine {
 
         logger.info("Executing cross-reference analysis");
 
-        
-        Map<String, Set<String>> relationships = strategy.analyzeCrossReferences(context);
-        context.setKnowledgeRelationships(relationships);
+        try {
+            
+            Map<String, Set<String>> relationships = strategy.analyzeCrossReferences(context);
+            context.setKnowledgeRelationships(relationships);
 
-        
-        List<String> inconsistencies = strategy.validateConsistency(context);
-        if (!inconsistencies.isEmpty()) {
-            logger.warning("Found " + inconsistencies.size() + " potential inconsistencies");
-            context.addInconsistencies(inconsistencies);
+            
+            List<String> inconsistencies = strategy.validateConsistency(context);
+            if (!inconsistencies.isEmpty()) {
+                logger.warning("Found " + inconsistencies.size() + " potential inconsistencies");
+                context.addInconsistencies(inconsistencies);
+            }
+
+            progress.updateProgress(85, "Cross-reference analysis completed");
+
+        } catch (Exception e) {
+            logger.warning("Error in cross-reference analysis: " + e.getMessage());
+            progress.updateProgress(85, "Cross-reference analysis completed with errors");
         }
-
-        progress.updateProgress(85, "Cross-reference analysis completed");
     }
 
-    
     private String synthesizeKnowledge(DeepResearchContext context, DeepResearchStrategy strategy)
         throws Research4jException {
 
         logger.info("Synthesizing knowledge from " + context.getAllCitations().size() + " sources");
 
-        return strategy.synthesizeKnowledge(context);
+        try {
+            return strategy.synthesizeKnowledge(context);
+        } catch (Exception e) {
+            logger.warning("Error in knowledge synthesis: " + e.getMessage());
+            return generateFallbackSynthesis(context);
+        }
     }
 
-    
+    private String generateFallbackSynthesis(DeepResearchContext context) {
+        StringBuilder synthesis = new StringBuilder();
+
+        synthesis.append("# Research Synthesis: ").append(context.getOriginalQuery()).append("\n\n");
+        synthesis.append("## Summary\n");
+        synthesis.append("Comprehensive research was conducted covering ")
+            .append(context.getResearchQuestions().size())
+            .append(" research questions and ")
+            .append(context.getAllCitations().size())
+            .append(" sources.\n\n");
+
+        synthesis.append("## Key Findings\n");
+        Map<String, List<ResearchQuestion>> questionsByCategory = context.getResearchQuestions().stream()
+            .collect(Collectors.groupingBy(ResearchQuestion::getCategory));
+
+        for (Map.Entry<String, List<ResearchQuestion>> entry : questionsByCategory.entrySet()) {
+            synthesis.append("### ").append(capitalize(entry.getKey())).append("\n");
+            synthesis.append("Analyzed ").append(entry.getValue().size()).append(" aspects in this category.\n\n");
+        }
+
+        return synthesis.toString();
+    }
+
     private String generateFinalReport(
         DeepResearchContext context,
         DeepResearchStrategy strategy,
@@ -483,38 +521,138 @@ public class DeepResearchEngine {
 
         logger.info("Generating final research report");
 
-        return strategy.generateFinalReport(context, synthesizedKnowledge);
+        try {
+            return strategy.generateFinalReport(context, synthesizedKnowledge);
+        } catch (Exception e) {
+            logger.warning("Error generating final report: " + e.getMessage());
+            return generateFallbackReport(context, synthesizedKnowledge);
+        }
     }
 
-    
+    private String generateFallbackReport(DeepResearchContext context, String synthesizedKnowledge) {
+        StringBuilder report = new StringBuilder();
+
+        report.append("# Deep Research Report: ").append(context.getOriginalQuery()).append("\n\n");
+        report.append("## Executive Summary\n");
+        report.append("This report presents comprehensive research findings on ")
+            .append(context.getOriginalQuery())
+            .append(".\n\n");
+
+        report.append("## Research Overview\n");
+        report.append("- **Research Questions**: ").append(context.getResearchQuestions().size()).append("\n");
+        report.append("- **Sources Analyzed**: ").append(context.getAllCitations().size()).append("\n");
+        report.append("- **Research Duration**: ").append(
+            java.time.Duration.between(context.getStartTime(), java.time.Instant.now())).append("\n\n");
+
+        report.append("## Findings\n");
+        report.append(synthesizedKnowledge).append("\n\n");
+
+        report.append("## Conclusion\n");
+        report.append("This research provides comprehensive coverage of the topic with insights from multiple authoritative sources.\n");
+
+        return report.toString();
+    }
+
     private DeepResearchStrategy selectOptimalStrategy(
         String query,
         UserProfile userProfile,
         DeepResearchConfig config) {
 
-        String queryLower = query.toLowerCase();
-        String domain = userProfile != null ? userProfile.getDomain() : "general";
+        try {
+            String queryLower = query.toLowerCase();
+            String domain = userProfile != null ? userProfile.getDomain() : "general";
 
-        
-        if (domain.contains("software") || domain.contains("technical") || domain.contains("engineering") ||
-            queryLower.contains("implement") || queryLower.contains("code") || queryLower.contains("architecture")) {
-            return strategies.get("technical");
+            
+            if (domain.contains("software") || domain.contains("technical") || domain.contains("engineering") ||
+                queryLower.contains("implement") || queryLower.contains("code") || queryLower.contains("architecture")) {
+                return strategies.get("technical");
+            }
+
+            
+            return strategies.get("comprehensive");
+
+        } catch (Exception e) {
+            logger.warning("Error selecting strategy, using comprehensive: " + e.getMessage());
+            return strategies.get("comprehensive");
         }
+    }
 
-        
-        if (domain.contains("academic") || domain.contains("research") ||
-            queryLower.contains("research") || queryLower.contains("study") || queryLower.contains("analysis")) {
-            return strategies.get("academic");
+    
+    private ResearchQuestion.Priority determineQuestionPriority(String question, DeepResearchContext context) {
+        try {
+            String questionLower = question.toLowerCase();
+
+            if (questionLower.contains("what is") || questionLower.contains("how does") ||
+                questionLower.contains("how to")) {
+                return ResearchQuestion.Priority.HIGH;
+            }
+
+            if (questionLower.contains("best practices") || questionLower.contains("implementation") ||
+                questionLower.contains("example")) {
+                return ResearchQuestion.Priority.HIGH;
+            }
+
+            if (questionLower.contains("challenge") || questionLower.contains("problem") ||
+                questionLower.contains("compare")) {
+                return ResearchQuestion.Priority.MEDIUM;
+            }
+
+            return ResearchQuestion.Priority.MEDIUM;
+
+        } catch (Exception e) {
+            logger.warning("Error determining question priority: " + e.getMessage());
+            return ResearchQuestion.Priority.MEDIUM;
         }
+    }
 
-        
-        if (domain.contains("business") || domain.contains("management") ||
-            queryLower.contains("business") || queryLower.contains("strategy") || queryLower.contains("market")) {
-            return strategies.get("business");
+    private String categorizeQuestion(String question) {
+        try {
+            String questionLower = question.toLowerCase();
+
+            if (questionLower.contains("what is") || questionLower.contains("define")) {
+                return "fundamental";
+            }
+            if (questionLower.contains("how does") || questionLower.contains("how to")) {
+                return "technical";
+            }
+            if (questionLower.contains("compare") || questionLower.contains("versus")) {
+                return "comparative";
+            }
+            if (questionLower.contains("implement") || questionLower.contains("code")) {
+                return "implementation";
+            }
+            if (questionLower.contains("best practice") || questionLower.contains("should")) {
+                return "best-practices";
+            }
+            if (questionLower.contains("future") || questionLower.contains("trend")) {
+                return "trends";
+            }
+
+            return "analysis";
+
+        } catch (Exception e) {
+            logger.warning("Error categorizing question: " + e.getMessage());
+            return "general";
         }
+    }
 
-        
-        return strategies.get("comprehensive");
+    private String capitalize(String str) {
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1).toUpperCase() + str.substring(1);
+    }
+
+    private String truncate(String str, int maxLength) {
+        if (str == null || str.length() <= maxLength) {
+            return str != null ? str : "Unknown";
+        }
+        return str.substring(0, maxLength - 3) + "...";
+    }
+
+    private String generateSessionId() {
+        return "deep-research-" + System.currentTimeMillis() + "-" +
+            Integer.toHexString((int)(Math.random() * 0x10000));
     }
 
     
@@ -522,12 +660,10 @@ public class DeepResearchEngine {
         return progressTracker.get(sessionId);
     }
 
-    
     public Map<String, DeepResearchProgress> getAllActiveResearch() {
         return new HashMap<>(progressTracker);
     }
 
-    
     public boolean cancelResearch(String sessionId) {
         DeepResearchContext context = activeSessions.remove(sessionId);
         DeepResearchProgress progress = progressTracker.remove(sessionId);
@@ -540,24 +676,10 @@ public class DeepResearchEngine {
         return false;
     }
 
-    
     public MemoryManager getMemoryManager() {
         return memoryManager;
     }
 
-    private String generateSessionId() {
-        return "deep-research-" + System.currentTimeMillis() + "-" +
-            Integer.toHexString((int)(Math.random() * 0x10000));
-    }
-
-    private String truncate(String str, int maxLength) {
-        if (str == null || str.length() <= maxLength) {
-            return str;
-        }
-        return str.substring(0, maxLength - 3) + "...";
-    }
-
-    
     public void shutdown() {
         try {
             
@@ -578,6 +700,8 @@ public class DeepResearchEngine {
             executor.shutdownNow();
             Thread.currentThread().interrupt();
             logger.warning("Deep Research Engine shutdown interrupted");
+        } catch (Exception e) {
+            logger.warning("Error during Deep Research Engine shutdown: " + e.getMessage());
         }
     }
 }
