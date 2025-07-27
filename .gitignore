@@ -23,6 +23,8 @@ target/
 
 /src/main/java/io/github/venkat1701/examples
 
+!**/src/main/java/**/examples
+
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
