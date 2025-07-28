@@ -59,7 +59,7 @@ public class ResearchSession implements AutoCloseable {
     }
 
     public CompletableFuture<DeepResearchResult> exhaustiveDeepQuery(String query) {
-        return research4j.deepResearch(query, userProfile, DeepResearchConfig.exhaustiveConfig());
+        return research4j.deepResearch(query, userProfile, DeepResearchConfig.expertConfig());
     }
 
     
