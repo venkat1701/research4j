@@ -57,17 +57,45 @@ public class DeepResearchProgress {
         this.currentActivity = "Research cancelled";
     }
 
-    
-    public String getSessionId() { return sessionId; }
-    public Instant getStartTime() { return startTime; }
-    public Instant getEndTime() { return endTime; }
-    public ResearchPhase getCurrentPhase() { return currentPhase; }
-    public int getProgressPercentage() { return progressPercentage.get(); }
-    public String getCurrentActivity() { return currentActivity; }
-    public List<String> getCompletedActivities() { return new ArrayList<>(completedActivities); }
-    public List<String> getErrors() { return new ArrayList<>(errors); }
-    public boolean isCancelled() { return cancelled; }
-    public boolean isCompleted() { return currentPhase == ResearchPhase.COMPLETED; }
+    public String getSessionId() {
+        return sessionId;
+    }
+
+    public Instant getStartTime() {
+        return startTime;
+    }
+
+    public Instant getEndTime() {
+        return endTime;
+    }
+
+    public ResearchPhase getCurrentPhase() {
+        return currentPhase;
+    }
+
+    public int getProgressPercentage() {
+        return progressPercentage.get();
+    }
+
+    public String getCurrentActivity() {
+        return currentActivity;
+    }
+
+    public List<String> getCompletedActivities() {
+        return new ArrayList<>(completedActivities);
+    }
+
+    public List<String> getErrors() {
+        return new ArrayList<>(errors);
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
+    }
+
+    public boolean isCompleted() {
+        return currentPhase == ResearchPhase.COMPLETED;
+    }
 
     public Duration getTotalDuration() {
         Instant end = endTime != null ? endTime : Instant.now();
@@ -83,7 +111,7 @@ public class DeepResearchProgress {
         int progress = getProgressPercentage();
 
         if (progress <= 0) {
-            return Duration.ofMinutes(15); 
+            return Duration.ofMinutes(15);
         }
 
         long totalEstimatedSeconds = (elapsed.getSeconds() * 100) / progress;
