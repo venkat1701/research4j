@@ -13,11 +13,11 @@ public class ResearchEventHandler {
     public void handleResearchRequest(String query, String userId) {
         research4j.deepResearch(query)
             .thenAccept(result -> {
-                
+
                 System.out.println("Research completed for user: " + userId);
                 System.out.println("Quality score: " + result.getMetrics().getQualityScore());
 
-                
+
                 notifyUserOfCompletion(userId, result);
             })
             .exceptionally(throwable -> {
@@ -28,12 +28,12 @@ public class ResearchEventHandler {
     }
 
     private void notifyUserOfCompletion(String userId, DeepResearchResult result) {
-        
+
         System.out.println("Notification sent to user " + userId + " about research completion");
     }
 
     private void notifyUserOfFailure(String userId, Throwable error) {
-        
+
         System.out.println("Error notification sent to user " + userId + ": " + error.getMessage());
     }
 }

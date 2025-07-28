@@ -22,18 +22,18 @@ public class MemoryManager {
 
     private static final Logger logger = Logger.getLogger(MemoryManager.class.getName());
 
-    
+
     private final Map<String, DeepResearchResult> researchHistory;
     private final Map<String, Object> knowledgeBase;
     private final Map<String, List<CitationResult>> citationCache;
     private final Map<String, Map<String, Double>> conceptRelationships;
     private final Map<String, Instant> lastAccessed;
 
-    
+
     private final ExecutorService memoryExecutor;
     private volatile boolean shutdown = false;
 
-    
+
     private final int maxMemoryEntries;
     private final long memoryRetentionHours;
 
@@ -53,24 +53,24 @@ public class MemoryManager {
         this.maxMemoryEntries = 1000;
         this.memoryRetentionHours = 24;
 
-        
+
         startMemoryCleanupTask();
 
         logger.info("MemoryManager initialized with retention: " + memoryRetentionHours + " hours");
     }
 
-    
+
     public void storeResearchResult(String sessionId, DeepResearchResult result) {
         researchHistory.put(sessionId, result);
         lastAccessed.put(sessionId, Instant.now());
 
-        
+
         extractAndStoreKnowledge(result);
 
         logger.info("Stored research result for session: " + sessionId);
     }
 
-    
+
     public DeepResearchResult getResearchResult(String sessionId) {
         DeepResearchResult result = researchHistory.get(sessionId);
         if (result != null) {
@@ -79,7 +79,7 @@ public class MemoryManager {
         return result;
     }
 
-    
+
     public void updateKnowledge(String concept, String knowledge, List<CitationResult> sources) {
         knowledgeBase.put(concept, knowledge);
         if (sources != null && !sources.isEmpty()) {
@@ -87,13 +87,13 @@ public class MemoryManager {
         }
         lastAccessed.put(concept, Instant.now());
 
-        
+
         updateConceptRelationships(concept, knowledge);
 
         logger.fine("Updated knowledge for concept: " + concept);
     }
 
-    
+
     public String getKnowledge(String concept) {
         Object knowledge = knowledgeBase.get(concept);
         if (knowledge != null) {
@@ -103,7 +103,7 @@ public class MemoryManager {
         return null;
     }
 
-    
+
     public List<CitationResult> getCachedCitations(String concept) {
         List<CitationResult> citations = citationCache.get(concept);
         if (citations != null) {
@@ -112,7 +112,7 @@ public class MemoryManager {
         return citations;
     }
 
-    
+
     public List<String> findRelatedConcepts(String concept, double minSimilarity) {
         Map<String, Double> relationships = conceptRelationships.get(concept);
         if (relationships == null) {
@@ -127,7 +127,7 @@ public class MemoryManager {
             .collect(java.util.stream.Collectors.toList());
     }
 
-    
+
     public Map<String, Object> getMemoryStatistics() {
         Map<String, Object> stats = new HashMap<>();
         stats.put("researchHistorySize", researchHistory.size());
@@ -140,7 +140,7 @@ public class MemoryManager {
         return stats;
     }
 
-    
+
     public Map<String, String> searchKnowledge(String query) {
         Map<String, String> results = new HashMap<>();
         String queryLower = query.toLowerCase();
@@ -159,14 +159,14 @@ public class MemoryManager {
         return results;
     }
 
-    
+
     public void clearSession(String sessionId) {
         researchHistory.remove(sessionId);
         lastAccessed.remove(sessionId);
         logger.info("Cleared session data: " + sessionId);
     }
 
-    
+
     public void clearAllMemory() {
         researchHistory.clear();
         knowledgeBase.clear();
@@ -177,13 +177,13 @@ public class MemoryManager {
     }
 
     private void extractAndStoreKnowledge(DeepResearchResult result) {
-        
+
         for (var question : result.getResearchQuestions()) {
             String concept = extractMainConcept(question.getQuestion());
-            updateKnowledge(concept, question.getInsights().toString(), null);
+            updateKnowledge(concept, question.getMetadata().toString(), null);
         }
 
-        
+
         for (CitationResult citation : result.getAllCitations()) {
             String concept = extractMainConcept(citation.getTitle());
             citationCache.put(concept, List.of(citation));
@@ -191,14 +191,14 @@ public class MemoryManager {
     }
 
     private void updateConceptRelationships(String concept, String knowledge) {
-        
+
         Map<String, Double> relationships = conceptRelationships.computeIfAbsent(concept, k -> new ConcurrentHashMap<>());
 
-        
+
         for (String otherConcept : knowledgeBase.keySet()) {
             if (!otherConcept.equals(concept)) {
                 double similarity = calculateSimilarity(knowledge, knowledgeBase.get(otherConcept).toString());
-                if (similarity > 0.3) { 
+                if (similarity > 0.3) {
                     relationships.put(otherConcept, similarity);
                 }
             }
@@ -207,23 +207,23 @@ public class MemoryManager {
 
     private double calculateSimilarity(String text1, String text2) {
         try {
-            
+
             String[] words1 = text1.toLowerCase().split("\\W+");
             String[] words2 = text2.toLowerCase().split("\\W+");
 
-            
+
             Set<String> set1 = new HashSet<>(Arrays.asList(words1));
             Set<String> set2 = new HashSet<>(Arrays.asList(words2));
 
-            
+
             Set<String> intersection = new HashSet<>(set1);
             intersection.retainAll(set2);
 
-            
+
             Set<String> union = new HashSet<>(set1);
             union.addAll(set2);
 
-            
+
             return union.isEmpty() ? 0.0 : (double) intersection.size() / union.size();
 
         } catch (Exception e) {
@@ -233,7 +233,7 @@ public class MemoryManager {
     }
 
     private String extractMainConcept(String text) {
-        
+
         String[] words = text.toLowerCase().split("\\W+");
         for (String word : words) {
             if (word.length() > 4 && !isStopWord(word)) {
@@ -252,7 +252,7 @@ public class MemoryManager {
         memoryExecutor.submit(() -> {
             while (!shutdown) {
                 try {
-                    Thread.sleep(TimeUnit.HOURS.toMillis(1)); 
+                    Thread.sleep(TimeUnit.HOURS.toMillis(1));
                     performMemoryCleanup();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -268,7 +268,7 @@ public class MemoryManager {
         Instant cutoff = Instant.now().minusSeconds(memoryRetentionHours * 3600);
         AtomicInteger removedEntries = new AtomicInteger();
 
-        
+
         lastAccessed.entrySet().removeIf(entry -> {
             if (entry.getValue().isBefore(cutoff)) {
                 String key = entry.getKey();
@@ -281,9 +281,9 @@ public class MemoryManager {
             return false;
         });
 
-        
+
         if (researchHistory.size() > maxMemoryEntries) {
-            
+
             researchHistory.entrySet().stream()
                 .sorted(Map.Entry.<String, DeepResearchResult>comparingByValue(
                     (r1, r2) -> r1.getCompletedAt().compareTo(r2.getCompletedAt())))
@@ -302,8 +302,8 @@ public class MemoryManager {
     }
 
     private Instant getLastCleanupTime() {
-        
-        return Instant.now().minusSeconds(3600); 
+
+        return Instant.now().minusSeconds(3600);
     }
 
     public void shutdown() {

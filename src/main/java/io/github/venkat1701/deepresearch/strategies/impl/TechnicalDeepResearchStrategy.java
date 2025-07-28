@@ -110,7 +110,7 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
             String insightPrompt = buildSafeTechnicalInsightPrompt(question, citations, context);
             String contextInfo = "TechnicalInsights-" + question.getCategory();
 
-            
+
             LLMResponse<String> response = responseHandler.safeComplete(insightPrompt, String.class, contextInfo);
 
             String insights = response.structuredOutput();
@@ -341,7 +341,7 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         return report.toString();
     }
 
-    
+
     private boolean hasValidContent(CitationResult citation) {
         return citation.getContent() != null && citation.getContent().length() >= 50;
     }
@@ -386,7 +386,7 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         return text.substring(0, maxLength - 3) + "...";
     }
 
-    
+
     @Override
     public List<String> identifyCriticalAreas(DeepResearchContext context) {
         return List.of("implementation architecture", "performance optimization", "security considerations");
