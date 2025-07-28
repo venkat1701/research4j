@@ -55,7 +55,7 @@ public class ConceptualGraph {
     }
 
     public List<String> findShortestPath(String startConcept, String endConcept) {
-        
+
         if (!concepts.containsKey(startConcept) || !concepts.containsKey(endConcept)) {
             return List.of();
         }
@@ -84,7 +84,7 @@ public class ConceptualGraph {
             }
         }
 
-        return List.of(); 
+        return List.of();
     }
 
     private List<String> reconstructPath(Map<String, String> parent, String start, String end) {
