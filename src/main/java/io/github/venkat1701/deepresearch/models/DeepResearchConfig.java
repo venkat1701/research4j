@@ -1,7 +1,13 @@
 package io.github.venkat1701.deepresearch.models;
 
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import io.github.venkat1701.core.enums.OutputFormat;
 
@@ -28,8 +34,13 @@ public class DeepResearchConfig {
             this.description = description;
         }
 
-        public int getLevel() { return level; }
-        public String getDescription() { return description; }
+        public int getLevel() {
+            return level;
+        }
+
+        public String getDescription() {
+            return description;
+        }
     }
 
     public enum NarrativeStyle {
@@ -44,10 +55,11 @@ public class DeepResearchConfig {
             this.description = description;
         }
 
-        public String getDescription() { return description; }
+        public String getDescription() {
+            return description;
+        }
     }
 
-    // Core Configuration
     private final ResearchDepth researchDepth;
     private final NarrativeStyle narrativeStyle;
     private final int maxSources;
@@ -55,34 +67,29 @@ public class DeepResearchConfig {
     private final int maxRounds;
     private final Duration maxProcessingTime;
 
-    // Quality Configuration
     private final double minRelevanceScore;
     private final int minWordCount;
     private final int maxWordCount;
     private final boolean enableQualityFiltering;
     private final boolean enableCrossValidation;
 
-    // Advanced Configuration
     private final boolean enableParallelProcessing;
     private final int parallelThreads;
     private final boolean enableDeepDiveMode;
     private final boolean enableIterativeRefinement;
     private final boolean enableSemanticClustering;
 
-    // Output Configuration
     private final boolean includeExecutiveSummary;
     private final boolean includeMethodology;
     private final boolean includeBibliography;
     private final boolean includeMetrics;
     private final OutputFormat outputFormat;
 
-    // Search Configuration
     private final Set<String> preferredDomains;
     private final Set<String> excludedDomains;
     private final List<String> additionalKeywords;
     private final boolean enableDomainDiversification;
 
-    // Rate Limiting Configuration
     private final Duration searchRateLimit;
     private final Duration deepSearchRateLimit;
     private final int maxConcurrentSearches;
@@ -123,10 +130,8 @@ public class DeepResearchConfig {
         this.maxConcurrentSearches = builder.maxConcurrentSearches;
     }
 
-    // Static factory methods for common configurations
     public static DeepResearchConfig basicConfig() {
-        return new Builder()
-            .researchDepth(ResearchDepth.BASIC)
+        return new Builder().researchDepth(ResearchDepth.BASIC)
             .narrativeStyle(NarrativeStyle.GENERAL)
             .maxSources(15)
             .maxQuestions(8)
@@ -137,8 +142,7 @@ public class DeepResearchConfig {
     }
 
     public static DeepResearchConfig standardConfig() {
-        return new Builder()
-            .researchDepth(ResearchDepth.STANDARD)
+        return new Builder().researchDepth(ResearchDepth.STANDARD)
             .narrativeStyle(NarrativeStyle.BUSINESS)
             .maxSources(30)
             .maxQuestions(12)
@@ -151,8 +155,7 @@ public class DeepResearchConfig {
     }
 
     public static DeepResearchConfig comprehensiveConfig() {
-        return new Builder()
-            .researchDepth(ResearchDepth.COMPREHENSIVE)
+        return new Builder().researchDepth(ResearchDepth.COMPREHENSIVE)
             .narrativeStyle(NarrativeStyle.ACADEMIC)
             .maxSources(50)
             .maxQuestions(18)
@@ -168,8 +171,7 @@ public class DeepResearchConfig {
     }
 
     public static DeepResearchConfig expertConfig() {
-        return new Builder()
-            .researchDepth(ResearchDepth.EXPERT)
+        return new Builder().researchDepth(ResearchDepth.EXPERT)
             .narrativeStyle(NarrativeStyle.TECHNICAL)
             .maxSources(75)
             .maxQuestions(24)
@@ -192,12 +194,10 @@ public class DeepResearchConfig {
         return standardConfig();
     }
 
-    // Configuration validation
     public ConfigValidationResult validate() {
         List<String> errors = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
 
-        // Validate basic parameters
         if (maxSources < 1) {
             errors.add("Maximum sources must be at least 1");
         }
@@ -211,7 +211,6 @@ public class DeepResearchConfig {
             errors.add("Minimum relevance score must be between 0.0 and 1.0");
         }
 
-        // Validate word counts
         if (minWordCount > maxWordCount) {
             errors.add("Minimum word count cannot exceed maximum word count");
         }
@@ -219,7 +218,6 @@ public class DeepResearchConfig {
             errors.add("Minimum word count cannot be negative");
         }
 
-        // Validate parallel processing
         if (enableParallelProcessing && parallelThreads < 1) {
             errors.add("Parallel threads must be at least 1 when parallel processing is enabled");
         }
@@ -227,7 +225,6 @@ public class DeepResearchConfig {
             warnings.add("High thread count (" + parallelThreads + ") may impact performance");
         }
 
-        // Validate processing time
         if (maxProcessingTime.isNegative() || maxProcessingTime.isZero()) {
             errors.add("Maximum processing time must be positive");
         }
@@ -235,7 +232,6 @@ public class DeepResearchConfig {
             warnings.add("Very long processing time (" + maxProcessingTime.toMinutes() + " minutes)");
         }
 
-        // Validate rate limiting
         if (searchRateLimit.isNegative()) {
             errors.add("Search rate limit cannot be negative");
         }
@@ -243,7 +239,6 @@ public class DeepResearchConfig {
             errors.add("Deep search rate limit cannot be negative");
         }
 
-        // Performance warnings
         if (researchDepth == ResearchDepth.EXPERT && maxSources > 100) {
             warnings.add("Expert mode with very high source count may be slow");
         }
@@ -251,25 +246,25 @@ public class DeepResearchConfig {
         return new ConfigValidationResult(errors, warnings, errors.isEmpty());
     }
 
-    // Get estimated processing time based on configuration
     public Duration getEstimatedProcessingTime() {
         int baseMinutes = researchDepth.getLevel() * 5;
 
-        // Adjust for source count
         baseMinutes += (maxSources / 10) * 2;
 
-        // Adjust for question count
         baseMinutes += (maxQuestions / 5) * 3;
 
-        // Adjust for rounds
         baseMinutes += (maxRounds - 1) * 5;
 
-        // Adjust for advanced features
-        if (enableDeepDiveMode) baseMinutes += 10;
-        if (enableCrossValidation) baseMinutes += 5;
-        if (enableSemanticClustering) baseMinutes += 3;
+        if (enableDeepDiveMode) {
+            baseMinutes += 10;
+        }
+        if (enableCrossValidation) {
+            baseMinutes += 5;
+        }
+        if (enableSemanticClustering) {
+            baseMinutes += 3;
+        }
 
-        // Parallel processing reduces time
         if (enableParallelProcessing) {
             baseMinutes = (int) (baseMinutes * 0.7);
         }
@@ -277,35 +272,31 @@ public class DeepResearchConfig {
         return Duration.ofMinutes(Math.min(baseMinutes, maxProcessingTime.toMinutes()));
     }
 
-    // Get memory requirements estimate in MB
     public int getEstimatedMemoryRequirementMB() {
-        int baseMB = 100; // Base memory
+        int baseMB = 100;
 
-        baseMB += maxSources * 2; // ~2MB per source
-        baseMB += maxQuestions * 1; // ~1MB per question
+        baseMB += maxSources * 2;
+        baseMB += maxQuestions * 1;
 
         if (enableParallelProcessing) {
-            baseMB += parallelThreads * 50; // Additional memory per thread
+            baseMB += parallelThreads * 50;
         }
 
         if (enableSemanticClustering) {
-            baseMB += 200; // Clustering algorithms need more memory
+            baseMB += 200;
         }
 
         return baseMB;
     }
 
-    // Create a copy with modifications
     public DeepResearchConfig withModifications(ConfigModifier modifier) {
         Builder builder = toBuilder();
         modifier.modify(builder);
         return builder.build();
     }
 
-    // Convert to builder for modifications
     public Builder toBuilder() {
-        return new Builder()
-            .researchDepth(researchDepth)
+        return new Builder().researchDepth(researchDepth)
             .narrativeStyle(narrativeStyle)
             .maxSources(maxSources)
             .maxQuestions(maxQuestions)
@@ -335,7 +326,6 @@ public class DeepResearchConfig {
             .maxConcurrentSearches(maxConcurrentSearches);
     }
 
-    // Export configuration as map
     public Map<String, Object> exportAsMap() {
         Map<String, Object> export = new HashMap<>();
 
@@ -376,38 +366,120 @@ public class DeepResearchConfig {
         return export;
     }
 
-    // Getters
-    public ResearchDepth getResearchDepth() { return researchDepth; }
-    public NarrativeStyle getNarrativeStyle() { return narrativeStyle; }
-    public int getMaxSources() { return maxSources; }
-    public int getMaxQuestions() { return maxQuestions; }
-    public int getMaxRounds() { return maxRounds; }
-    public Duration getMaxProcessingTime() { return maxProcessingTime; }
-    public double getMinRelevanceScore() { return minRelevanceScore; }
-    public int getMinWordCount() { return minWordCount; }
-    public int getMaxWordCount() { return maxWordCount; }
-    public boolean isEnableQualityFiltering() { return enableQualityFiltering; }
-    public boolean isEnableCrossValidation() { return enableCrossValidation; }
-    public boolean isEnableParallelProcessing() { return enableParallelProcessing; }
-    public int getParallelThreads() { return parallelThreads; }
-    public boolean isEnableDeepDiveMode() { return enableDeepDiveMode; }
-    public boolean isEnableIterativeRefinement() { return enableIterativeRefinement; }
-    public boolean isEnableSemanticClustering() { return enableSemanticClustering; }
-    public boolean isIncludeExecutiveSummary() { return includeExecutiveSummary; }
-    public boolean isIncludeMethodology() { return includeMethodology; }
-    public boolean isIncludeBibliography() { return includeBibliography; }
-    public boolean isIncludeMetrics() { return includeMetrics; }
-    public OutputFormat getOutputFormat() { return outputFormat; }
-    public Set<String> getPreferredDomains() { return new HashSet<>(preferredDomains); }
-    public Set<String> getExcludedDomains() { return new HashSet<>(excludedDomains); }
-    public List<String> getAdditionalKeywords() { return new ArrayList<>(additionalKeywords); }
-    public boolean isEnableDomainDiversification() { return enableDomainDiversification; }
-    public Duration getSearchRateLimit() { return searchRateLimit; }
-    public Duration getDeepSearchRateLimit() { return deepSearchRateLimit; }
-    public int getMaxConcurrentSearches() { return maxConcurrentSearches; }
+    public ResearchDepth getResearchDepth() {
+        return researchDepth;
+    }
 
-    // Builder Pattern
+    public NarrativeStyle getNarrativeStyle() {
+        return narrativeStyle;
+    }
+
+    public int getMaxSources() {
+        return maxSources;
+    }
+
+    public int getMaxQuestions() {
+        return maxQuestions;
+    }
+
+    public int getMaxRounds() {
+        return maxRounds;
+    }
+
+    public Duration getMaxProcessingTime() {
+        return maxProcessingTime;
+    }
+
+    public double getMinRelevanceScore() {
+        return minRelevanceScore;
+    }
+
+    public int getMinWordCount() {
+        return minWordCount;
+    }
+
+    public int getMaxWordCount() {
+        return maxWordCount;
+    }
+
+    public boolean isEnableQualityFiltering() {
+        return enableQualityFiltering;
+    }
+
+    public boolean isEnableCrossValidation() {
+        return enableCrossValidation;
+    }
+
+    public boolean isEnableParallelProcessing() {
+        return enableParallelProcessing;
+    }
+
+    public int getParallelThreads() {
+        return parallelThreads;
+    }
+
+    public boolean isEnableDeepDiveMode() {
+        return enableDeepDiveMode;
+    }
+
+    public boolean isEnableIterativeRefinement() {
+        return enableIterativeRefinement;
+    }
+
+    public boolean isEnableSemanticClustering() {
+        return enableSemanticClustering;
+    }
+
+    public boolean isIncludeExecutiveSummary() {
+        return includeExecutiveSummary;
+    }
+
+    public boolean isIncludeMethodology() {
+        return includeMethodology;
+    }
+
+    public boolean isIncludeBibliography() {
+        return includeBibliography;
+    }
+
+    public boolean isIncludeMetrics() {
+        return includeMetrics;
+    }
+
+    public OutputFormat getOutputFormat() {
+        return outputFormat;
+    }
+
+    public Set<String> getPreferredDomains() {
+        return new HashSet<>(preferredDomains);
+    }
+
+    public Set<String> getExcludedDomains() {
+        return new HashSet<>(excludedDomains);
+    }
+
+    public List<String> getAdditionalKeywords() {
+        return new ArrayList<>(additionalKeywords);
+    }
+
+    public boolean isEnableDomainDiversification() {
+        return enableDomainDiversification;
+    }
+
+    public Duration getSearchRateLimit() {
+        return searchRateLimit;
+    }
+
+    public Duration getDeepSearchRateLimit() {
+        return deepSearchRateLimit;
+    }
+
+    public int getMaxConcurrentSearches() {
+        return maxConcurrentSearches;
+    }
+
     public static class Builder {
+
         private ResearchDepth researchDepth = ResearchDepth.STANDARD;
         private NarrativeStyle narrativeStyle = NarrativeStyle.GENERAL;
         private int maxSources = 30;
@@ -587,8 +659,8 @@ public class DeepResearchConfig {
         }
     }
 
-    // Supporting Classes
     public static class ConfigValidationResult {
+
         private final List<String> errors;
         private final List<String> warnings;
         private final boolean isValid;
@@ -599,10 +671,21 @@ public class DeepResearchConfig {
             this.isValid = isValid;
         }
 
-        public List<String> getErrors() { return new ArrayList<>(errors); }
-        public List<String> getWarnings() { return new ArrayList<>(warnings); }
-        public boolean isValid() { return isValid; }
-        public boolean hasWarnings() { return !warnings.isEmpty(); }
+        public List<String> getErrors() {
+            return new ArrayList<>(errors);
+        }
+
+        public List<String> getWarnings() {
+            return new ArrayList<>(warnings);
+        }
+
+        public boolean isValid() {
+            return isValid;
+        }
+
+        public boolean hasWarnings() {
+            return !warnings.isEmpty();
+        }
 
         public String getReport() {
             StringBuilder report = new StringBuilder();
@@ -616,14 +699,18 @@ public class DeepResearchConfig {
             if (!errors.isEmpty()) {
                 report.append("\nErrors:\n");
                 for (String error : errors) {
-                    report.append("- ").append(error).append("\n");
+                    report.append("- ")
+                        .append(error)
+                        .append("\n");
                 }
             }
 
             if (!warnings.isEmpty()) {
                 report.append("\nWarnings:\n");
                 for (String warning : warnings) {
-                    report.append("- ").append(warning).append("\n");
+                    report.append("- ")
+                        .append(warning)
+                        .append("\n");
                 }
             }
 
@@ -633,12 +720,13 @@ public class DeepResearchConfig {
 
     @FunctionalInterface
     public interface ConfigModifier {
+
         void modify(Builder builder);
     }
 
     @Override
     public String toString() {
-        return String.format("DeepResearchConfig{depth=%s, style=%s, maxSources=%d, maxQuestions=%d, maxRounds=%d}",
-            researchDepth, narrativeStyle, maxSources, maxQuestions, maxRounds);
+        return String.format("DeepResearchConfig{depth=%s, style=%s, maxSources=%d, maxQuestions=%d, maxRounds=%d}", researchDepth, narrativeStyle, maxSources,
+            maxQuestions, maxRounds);
     }
 }

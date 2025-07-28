@@ -19,20 +19,20 @@ public class DeepResearchContext {
     private final DeepResearchConfig config;
     private final Instant startTime;
 
-    // Research State
+    
     private final List<CitationResult> allCitations;
     private final Map<String, String> allInsights;
     private final List<ResearchQuestion> researchQuestions;
     private final Set<String> exploredTopics;
     private final Map<String, Object> sessionMetadata;
 
-    // Progress Tracking
+    
     private int currentRound;
     private int totalQuestionsGenerated;
     private int totalQuestionsResearched;
     private double averageRelevanceScore;
 
-    // Thread-safe collections for concurrent access
+    
     private final Map<String, String> threadSafeInsights;
     private final List<CitationResult> threadSafeCitations;
 
@@ -42,24 +42,24 @@ public class DeepResearchContext {
         this.config = config;
         this.startTime = Instant.now();
 
-        // Initialize collections
+        
         this.allCitations = Collections.synchronizedList(new ArrayList<>());
         this.allInsights = new ConcurrentHashMap<>();
         this.researchQuestions = Collections.synchronizedList(new ArrayList<>());
         this.exploredTopics = Collections.synchronizedSet(new HashSet<>());
         this.sessionMetadata = new ConcurrentHashMap<>();
 
-        // Thread-safe views
+        
         this.threadSafeInsights = new ConcurrentHashMap<>();
         this.threadSafeCitations = Collections.synchronizedList(new ArrayList<>());
 
-        // Initialize progress tracking
+        
         this.currentRound = 0;
         this.totalQuestionsGenerated = 0;
         this.totalQuestionsResearched = 0;
         this.averageRelevanceScore = 0.0;
 
-        // Initialize session metadata
+        
         initializeSessionMetadata();
     }
 
@@ -71,14 +71,14 @@ public class DeepResearchContext {
         sessionMetadata.put("engine", "DeepResearchEngine");
     }
 
-    // Citation Management
+    
     public synchronized void addCitation(CitationResult citation) {
         if (citation != null && !allCitations.contains(citation)) {
             allCitations.add(citation);
             threadSafeCitations.add(citation);
             updateAverageRelevanceScore();
 
-            // Extract and add topics from citation
+            
             extractTopicsFromCitation(citation);
         }
     }
@@ -89,7 +89,7 @@ public class DeepResearchContext {
         }
     }
 
-    // Insight Management
+    
     public void addInsight(String question, String insight) {
         if (question != null && insight != null && !insight.trim().isEmpty()) {
             allInsights.put(question, insight);
@@ -103,13 +103,13 @@ public class DeepResearchContext {
         }
     }
 
-    // Research Question Management
+    
     public synchronized void addResearchQuestion(ResearchQuestion question) {
         if (question != null && !researchQuestions.contains(question)) {
             researchQuestions.add(question);
             totalQuestionsGenerated++;
 
-            // Extract topics from question
+            
             exploredTopics.addAll(question.getKeywords());
         }
     }
@@ -127,7 +127,7 @@ public class DeepResearchContext {
         }
     }
 
-    // Topic Management
+    
     public void addExploredTopic(String topic) {
         if (topic != null && !topic.trim().isEmpty()) {
             exploredTopics.add(topic.toLowerCase().trim());
@@ -140,7 +140,7 @@ public class DeepResearchContext {
         }
     }
 
-    // Progress Tracking
+    
     public void incrementRound() {
         this.currentRound++;
         sessionMetadata.put("currentRound", currentRound);
@@ -155,7 +155,7 @@ public class DeepResearchContext {
         sessionMetadata.put("completionRate", getCompletionRate());
     }
 
-    // Analytics and Metrics
+    
     public double getCompletionRate() {
         return totalQuestionsGenerated > 0 ?
             (double) totalQuestionsResearched / totalQuestionsGenerated : 0.0;
@@ -207,7 +207,7 @@ public class DeepResearchContext {
         }
     }
 
-    // Context Summary
+    
     public ContextSummary generateSummary() {
         return new ContextSummary(
             sessionId,
@@ -226,7 +226,7 @@ public class DeepResearchContext {
         );
     }
 
-    // Export context for external use
+    
     public Map<String, Object> exportContext() {
         Map<String, Object> export = new HashMap<>();
 
@@ -236,7 +236,7 @@ public class DeepResearchContext {
         export.put("startTime", startTime);
         export.put("currentRound", currentRound);
 
-        // Statistics
+        
         export.put("totalCitations", allCitations.size());
         export.put("totalInsights", allInsights.size());
         export.put("totalQuestions", researchQuestions.size());
@@ -244,7 +244,7 @@ public class DeepResearchContext {
         export.put("averageRelevanceScore", averageRelevanceScore);
         export.put("uniqueDomains", getUniqueDomainsCount());
 
-        // Data snapshots (for export only)
+        
         export.put("exploredTopics", new ArrayList<>(exploredTopics));
         export.put("categoryDistribution", getCategoryDistribution());
         export.put("domainDistribution", getDomainDistribution());
@@ -253,7 +253,7 @@ public class DeepResearchContext {
         return export;
     }
 
-    // Helper methods
+    
     private void updateAverageRelevanceScore() {
         synchronized (allCitations) {
             this.averageRelevanceScore = allCitations.stream()
@@ -265,7 +265,7 @@ public class DeepResearchContext {
     }
 
     private void extractTopicsFromCitation(CitationResult citation) {
-        // Extract keywords from title and content
+        
         String text = (citation.getTitle() + " " + citation.getContent()).toLowerCase();
         String[] words = text.split("\\W+");
 
@@ -287,7 +287,7 @@ public class DeepResearchContext {
         return stopWords.contains(word.toLowerCase());
     }
 
-    // Getters
+    
     public String getSessionId() {
         return sessionId;
     }
@@ -344,7 +344,7 @@ public class DeepResearchContext {
         return new HashMap<>(sessionMetadata);
     }
 
-    // Supporting Classes
+    
     public static class ContextSummary {
         private final String sessionId;
         private final String originalQuery;
@@ -379,7 +379,7 @@ public class DeepResearchContext {
             this.summaryTime = summaryTime;
         }
 
-        // Getters
+        
         public String getSessionId() { return sessionId; }
         public String getOriginalQuery() { return originalQuery; }
         public int getCurrentRound() { return currentRound; }

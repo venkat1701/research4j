@@ -2,7 +2,11 @@ package io.github.venkat1701.deepresearch.models;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import io.github.venkat1701.citation.CitationResult;
@@ -15,93 +19,73 @@ import io.github.venkat1701.citation.CitationResult;
  */
 public class DeepResearchResult {
 
-    // Core Result Data - from both versions
     private final String sessionId;
     private final String originalQuery;
 
-    // Content fields - supporting both naming conventions
-    private final String narrative;           // From results version
-    private final String finalReport;         // From models version
-    private final String executiveSummary;    // From results version
-    private final String methodology;         // From results version
+    private final String narrative;
+    private final String finalReport;
+    private final String executiveSummary;
+    private final String methodology;
 
-    // Research Data - union of both versions
-    private final ResearchResults results;                    // From results version
-    private final List<CitationResult> allCitations;         // From models version
-    private final List<ResearchQuestion> researchQuestions;  // From models version
-    private final Map<String, Object> knowledgeMap;          // From models version
-    private final Map<String, Object> metadata;              // From results version
-    private final List<ResearchInsight> keyInsights;         // From results version
+    private final ResearchResults results;
+    private final List<CitationResult> allCitations;
+    private final List<ResearchQuestion> researchQuestions;
+    private final Map<String, Object> knowledgeMap;
+    private final Map<String, Object> metadata;
+    private final List<ResearchInsight> keyInsights;
 
-    // Quality and Performance Metrics - from both versions
-    private final QualityMetrics qualityMetrics;      // From results version
-    private final PerformanceMetrics performanceMetrics; // From results version
-    private final ResearchMetrics metrics;            // From models version
-    private final DeepResearchConfig config;          // From results version
+    private final QualityMetrics qualityMetrics;
+    private final PerformanceMetrics performanceMetrics;
+    private final ResearchMetrics metrics;
+    private final DeepResearchConfig config;
 
-    // Timing and Strategy - union of both versions
-    private final Duration processingTime;             // From models version
-    private final String strategyUsed;                // From models version
-    private final Instant createdAt;                  // From results version
-    private final Instant completedAt;                // From models version
-    private final Map<String, Instant> phaseTimestamps; // From results version
+    private final Duration processingTime;
+    private final String strategyUsed;
+    private final Instant createdAt;
+    private final Instant completedAt;
+    private final Map<String, Instant> phaseTimestamps;
 
-    // Constructor supporting both patterns
-    public DeepResearchResult(String sessionId,
-        String originalQuery,
-        String narrative,
-        String executiveSummary,
-        String methodology,
-        ResearchResults results,
-        Object qualityMetrics, // Using Object to match engine call
-        DeepResearchConfig config) {
+    public DeepResearchResult(String sessionId, String originalQuery, String narrative, String executiveSummary, String methodology, ResearchResults results,
+        Object qualityMetrics, DeepResearchConfig config) {
 
-        // Core data
         this.sessionId = sessionId;
         this.originalQuery = originalQuery;
         this.narrative = narrative;
-        this.finalReport = narrative; // Use narrative as finalReport for compatibility
+        this.finalReport = narrative;
         this.executiveSummary = executiveSummary;
         this.methodology = methodology;
         this.results = results;
         this.config = config;
         this.createdAt = Instant.now();
-        this.completedAt = createdAt; // Same for compatibility
+        this.completedAt = createdAt;
 
-        // Initialize from results if available
         this.allCitations = results != null ? new ArrayList<>(results.getAllCitations()) : new ArrayList<>();
-        this.researchQuestions = new ArrayList<>(); // Initialize empty, can be populated later
+        this.researchQuestions = new ArrayList<>();
         this.knowledgeMap = new HashMap<>();
-        this.processingTime = Duration.ZERO; // Default, can be updated
-        this.strategyUsed = "Deep Research Engine"; // Default strategy
+        this.processingTime = Duration.ZERO;
+        this.strategyUsed = "Deep Research Engine";
 
-        // Initialize metrics
         this.qualityMetrics = createQualityMetrics(narrative, results);
         this.performanceMetrics = new PerformanceMetrics(results);
         this.metrics = calculateResearchMetrics();
 
-        // Extract key insights
         this.keyInsights = extractKeyInsights(results);
 
-        // Initialize metadata
         this.metadata = new HashMap<>();
         initializeMetadata();
 
-        // Phase timestamps
         this.phaseTimestamps = new HashMap<>();
         this.phaseTimestamps.put("creation", createdAt);
         this.phaseTimestamps.put("completion", completedAt);
     }
 
-    // Alternative constructor for models version compatibility
-    public DeepResearchResult(String sessionId, String originalQuery, String finalReport,
-        List<CitationResult> allCitations, List<ResearchQuestion> researchQuestions,
-        Map<String, Object> knowledgeMap, Duration processingTime, String strategyUsed) {
+    public DeepResearchResult(String sessionId, String originalQuery, String finalReport, List<CitationResult> allCitations,
+        List<ResearchQuestion> researchQuestions, Map<String, Object> knowledgeMap, Duration processingTime, String strategyUsed) {
 
         this.sessionId = sessionId;
         this.originalQuery = originalQuery;
         this.finalReport = finalReport;
-        this.narrative = finalReport; // Use finalReport as narrative for compatibility
+        this.narrative = finalReport;
         this.executiveSummary = generateBasicExecutiveSummary(finalReport);
         this.methodology = "Research methodology not specified";
         this.allCitations = new ArrayList<>(allCitations);
@@ -112,21 +96,17 @@ public class DeepResearchResult {
         this.completedAt = Instant.now();
         this.createdAt = completedAt;
 
-        // Create synthetic ResearchResults for compatibility
         this.results = createSyntheticResearchResults(allCitations, knowledgeMap);
         this.config = DeepResearchConfig.createDefault();
 
-        // Initialize metrics
         this.metrics = calculateResearchMetrics();
         this.qualityMetrics = createQualityMetrics(finalReport, results);
         this.performanceMetrics = new PerformanceMetrics(results);
         this.keyInsights = extractKeyInsights(results);
 
-        // Initialize metadata
         this.metadata = new HashMap<>();
         initializeMetadata();
 
-        // Phase timestamps
         this.phaseTimestamps = new HashMap<>();
         this.phaseTimestamps.put("creation", createdAt);
         this.phaseTimestamps.put("completion", completedAt);
@@ -138,85 +118,89 @@ public class DeepResearchResult {
     public String getFormattedOutput() {
         StringBuilder output = new StringBuilder();
 
-        // Title and Basic Info
         output.append("# Deep Research Report\n\n");
-        output.append("**Topic:** ").append(originalQuery).append("\n");
-        output.append("**Generated:** ").append(createdAt).append("\n");
-        output.append("**Session ID:** ").append(sessionId).append("\n");
+        output.append("**Topic:** ")
+            .append(originalQuery)
+            .append("\n");
+        output.append("**Generated:** ")
+            .append(createdAt)
+            .append("\n");
+        output.append("**Session ID:** ")
+            .append(sessionId)
+            .append("\n");
         if (strategyUsed != null) {
-            output.append("**Strategy Used:** ").append(strategyUsed).append("\n");
+            output.append("**Strategy Used:** ")
+                .append(strategyUsed)
+                .append("\n");
         }
         if (processingTime != null && !processingTime.isZero()) {
-            output.append("**Processing Time:** ").append(processingTime.toMinutes()).append(" minutes\n");
+            output.append("**Processing Time:** ")
+                .append(processingTime.toMinutes())
+                .append(" minutes\n");
         }
         output.append("\n");
 
-        // Executive Summary (if available)
-        if (executiveSummary != null && !executiveSummary.trim().isEmpty()) {
+        if (executiveSummary != null && !executiveSummary.trim()
+            .isEmpty()) {
             output.append("## Executive Summary\n\n");
-            output.append(executiveSummary).append("\n\n");
+            output.append(executiveSummary)
+                .append("\n\n");
         }
 
-        // Research Overview with metrics from both versions
         output.append("## Research Overview\n\n");
         output.append(String.format("- **Total Sources**: %d\n", getAllCitations().size()));
         if (!researchQuestions.isEmpty()) {
             output.append(String.format("- **Research Questions**: %d\n", researchQuestions.size()));
-            output.append(String.format("- **Questions Answered**: %d (%.1f%%)\n",
-                metrics.getAnsweredQuestions(), metrics.getCompletionRate() * 100));
+            output.append(String.format("- **Questions Answered**: %d (%.1f%%)\n", metrics.getAnsweredQuestions(), metrics.getCompletionRate() * 100));
         }
-        output.append(String.format("- **Word Count**: %,d words\n",
-            (narrative != null ? narrative : finalReport).split("\\s+").length));
+        output.append(String.format("- **Word Count**: %,d words\n", (narrative != null ? narrative : finalReport).split("\\s+").length));
 
         if (qualityMetrics != null) {
-            output.append(String.format("- **Overall Quality Score**: %.1f/10\n",
-                qualityMetrics.getOverallScore() * 10));
+            output.append(String.format("- **Overall Quality Score**: %.1f/10\n", qualityMetrics.getOverallScore() * 10));
         }
         if (metrics != null) {
-            output.append(String.format("- **Average Relevance Score**: %.2f/10\n",
-                metrics.getAvgRelevanceScore() * 10));
+            output.append(String.format("- **Average Relevance Score**: %.2f/10\n", metrics.getAvgRelevanceScore() * 10));
             output.append(String.format("- **Unique Domains**: %d\n", metrics.getUniqueDomains()));
         }
         output.append("\n");
 
-        // Key Insights (from results version)
         if (!keyInsights.isEmpty()) {
             output.append("## Key Insights\n\n");
             for (int i = 0; i < keyInsights.size(); i++) {
                 ResearchInsight insight = keyInsights.get(i);
-                output.append(String.format("%d. **%s**: %s\n",
-                    i + 1, insight.getTitle(), insight.getContent()));
+                output.append(String.format("%d. **%s**: %s\n", i + 1, insight.getTitle(), insight.getContent()));
             }
             output.append("\n");
         }
 
-        // Knowledge Map Summary (from models version)
         if (!knowledgeMap.isEmpty()) {
             output.append("## Knowledge Insights\n\n");
             for (Map.Entry<String, Object> entry : knowledgeMap.entrySet()) {
-                if (entry.getValue() instanceof String &&
-                    !entry.getKey().equals("totalSources") &&
-                    !entry.getKey().equals("categories")) {
-                    output.append("**").append(entry.getKey()).append("**: ");
-                    output.append(entry.getValue()).append("\n\n");
+                if (entry.getValue() instanceof String && !entry.getKey()
+                    .equals("totalSources") && !entry.getKey()
+                    .equals("categories")) {
+                    output.append("**")
+                        .append(entry.getKey())
+                        .append("**: ");
+                    output.append(entry.getValue())
+                        .append("\n\n");
                 }
             }
         }
 
-        // Main Narrative/Report
         output.append("## Comprehensive Analysis\n\n");
         String mainContent = narrative != null ? narrative : finalReport;
         if (mainContent != null) {
-            output.append(mainContent).append("\n\n");
+            output.append(mainContent)
+                .append("\n\n");
         }
 
-        // Research Questions (from models version)
         if (!researchQuestions.isEmpty()) {
             output.append("## Research Questions Explored\n\n");
             for (int i = 0; i < researchQuestions.size(); i++) {
                 ResearchQuestion question = researchQuestions.get(i);
-                output.append(String.format("%d. **%s** (Priority: %s, Category: %s)\n",
-                    i + 1, question.getQuestion(), question.getPriority(), question.getCategory()));
+                output.append(
+                    String.format("%d. **%s** (Priority: %s, Category: %s)\n", i + 1, question.getQuestion(), question.getPriority(), question.getCategory()));
                 if (question.isResearched()) {
                     output.append("   ✅ Researched\n");
                 } else {
@@ -226,21 +210,22 @@ public class DeepResearchResult {
             }
         }
 
-        // Research Methodology (from results version)
-        if (methodology != null && !methodology.trim().isEmpty()) {
+        if (methodology != null && !methodology.trim()
+            .isEmpty()) {
             output.append("## Research Methodology\n\n");
-            output.append(methodology).append("\n\n");
+            output.append(methodology)
+                .append("\n\n");
         }
 
-        // Quality Metrics Summary (from results version)
         if (qualityMetrics != null) {
             output.append("## Research Quality Summary\n\n");
-            output.append(getQualityMetricsSummary()).append("\n\n");
+            output.append(getQualityMetricsSummary())
+                .append("\n\n");
         }
 
-        // Source Bibliography
         output.append("## Sources and References\n\n");
-        output.append(formatBibliography()).append("\n");
+        output.append(formatBibliography())
+            .append("\n");
 
         return output.toString();
     }
@@ -249,26 +234,16 @@ public class DeepResearchResult {
      * Get research summary for quick overview - merged from both versions
      */
     public ResearchSummary getSummary() {
-        return new ResearchSummary(
-            originalQuery,
-            keyInsights.size() > 0 ? keyInsights.size() : researchQuestions.size(),
-            getAllCitations().size(),
+        return new ResearchSummary(originalQuery, keyInsights.size() > 0 ? keyInsights.size() : researchQuestions.size(), getAllCitations().size(),
             (narrative != null ? narrative : finalReport).split("\\s+").length,
-            qualityMetrics != null ? qualityMetrics.getOverallScore() : metrics.getQualityScore(),
-            createdAt,
-            strategyUsed
-        );
+            qualityMetrics != null ? qualityMetrics.getOverallScore() : metrics.getQualityScore(), createdAt, strategyUsed);
     }
 
     /**
      * Get performance analytics - from results version
      */
     public PerformanceAnalytics getPerformanceAnalytics() {
-        return new PerformanceAnalytics(
-            performanceMetrics,
-            results != null ? results.getMetrics() : null,
-            phaseTimestamps
-        );
+        return new PerformanceAnalytics(performanceMetrics, results != null ? results.getMetrics() : null, phaseTimestamps);
     }
 
     /**
@@ -277,7 +252,6 @@ public class DeepResearchResult {
     public Map<String, Object> exportAsMap() {
         Map<String, Object> export = new HashMap<>();
 
-        // Core data
         export.put("sessionId", sessionId);
         export.put("originalQuery", originalQuery);
         export.put("narrative", narrative);
@@ -294,33 +268,22 @@ public class DeepResearchResult {
             export.put("processingTime", processingTime.toString());
         }
 
-        // Research data
         export.put("totalSources", getAllCitations().size());
         export.put("totalQuestions", researchQuestions.size());
         if (results != null && results.getCategorizedResults() != null) {
-            export.put("categories", results.getCategorizedResults().keySet());
+            export.put("categories", results.getCategorizedResults()
+                .keySet());
         }
 
-        // Insights from both versions
         export.put("keyInsights", keyInsights.stream()
-            .map(insight -> Map.of(
-                "title", insight.getTitle(),
-                "content", insight.getContent(),
-                "confidence", insight.getConfidence()
-            ))
+            .map(insight -> Map.of("title", insight.getTitle(), "content", insight.getContent(), "confidence", insight.getConfidence()))
             .collect(Collectors.toList()));
 
-        // Research questions
         export.put("researchQuestions", researchQuestions.stream()
-            .map(q -> Map.of(
-                "question", q.getQuestion(),
-                "category", q.getCategory(),
-                "priority", q.getPriority().toString(),
-                "researched", q.isResearched()
-            ))
+            .map(q -> Map.of("question", q.getQuestion(), "category", q.getCategory(), "priority", q.getPriority()
+                .toString(), "researched", q.isResearched()))
             .collect(Collectors.toList()));
 
-        // Quality metrics from both versions
         if (qualityMetrics != null) {
             export.put("qualityScore", qualityMetrics.getOverallScore());
             export.put("wordCount", qualityMetrics.getWordCount());
@@ -332,9 +295,9 @@ public class DeepResearchResult {
             export.put("uniqueDomains", metrics.getUniqueDomains());
         }
 
-        // Configuration and metadata
         if (config != null) {
-            export.put("researchDepth", config.getResearchDepth().toString());
+            export.put("researchDepth", config.getResearchDepth()
+                .toString());
         }
         export.put("metadata", metadata);
         export.put("knowledgeMap", knowledgeMap);
@@ -351,8 +314,8 @@ public class DeepResearchResult {
 
         String content = narrative != null ? narrative : finalReport;
 
-        // Check content completeness
-        if (content == null || content.trim().isEmpty()) {
+        if (content == null || content.trim()
+            .isEmpty()) {
             issues.add("Content is empty or missing");
         } else {
             int wordCount = content.split("\\s+").length;
@@ -361,7 +324,6 @@ public class DeepResearchResult {
             }
         }
 
-        // Check source quality
         int sourceCount = getAllCitations().size();
         if (sourceCount < 5) {
             warnings.add("Fewer than 5 sources used");
@@ -369,31 +331,26 @@ public class DeepResearchResult {
             warnings.add("Fewer than 10 sources used (recommended minimum)");
         }
 
-        // Check executive summary
-        if (executiveSummary == null || executiveSummary.trim().isEmpty()) {
+        if (executiveSummary == null || executiveSummary.trim()
+            .isEmpty()) {
             warnings.add("Executive summary is missing");
         }
 
-        // Check methodology documentation
-        if (methodology == null || methodology.trim().isEmpty() ||
-            methodology.equals("Research methodology not specified")) {
+        if (methodology == null || methodology.trim()
+            .isEmpty() || methodology.equals("Research methodology not specified")) {
             warnings.add("Research methodology not documented");
         }
 
-        // Check research completion (if applicable)
         if (metrics != null && metrics.getCompletionRate() < 0.5) {
             warnings.add("Less than 50% of research questions answered");
         }
 
-        // Check processing efficiency (if applicable)
         if (processingTime != null && processingTime.toMinutes() > 30) {
             warnings.add("Processing took longer than 30 minutes");
         }
 
         return new ValidationResult(issues, warnings, issues.isEmpty());
     }
-
-    // Helper methods merged from both versions
 
     private QualityMetrics createQualityMetrics(String content, ResearchResults results) {
         int wordCount = content != null ? content.split("\\s+").length : 0;
@@ -422,12 +379,13 @@ public class DeepResearchResult {
 
         Duration procTime = processingTime != null ? processingTime : Duration.ZERO;
 
-        return new ResearchMetrics(totalSources, totalQuestions, answeredQuestions,
-            avgRelevanceScore, uniqueDomains.size(), procTime);
+        return new ResearchMetrics(totalSources, totalQuestions, answeredQuestions, avgRelevanceScore, uniqueDomains.size(), procTime);
     }
 
     private double calculateSourceQuality(List<CitationResult> citations) {
-        if (citations.isEmpty()) return 0.0;
+        if (citations.isEmpty()) {
+            return 0.0;
+        }
         return citations.stream()
             .mapToDouble(CitationResult::getRelevanceScore)
             .average()
@@ -435,7 +393,10 @@ public class DeepResearchResult {
     }
 
     private double assessCoherence(String content) {
-        if (content == null || content.trim().isEmpty()) return 0.0;
+        if (content == null || content.trim()
+            .isEmpty()) {
+            return 0.0;
+        }
 
         int sections = content.split("##").length - 1;
         int paragraphs = content.split("\n\n").length;
@@ -447,11 +408,15 @@ public class DeepResearchResult {
     }
 
     private double assessComprehensiveness(ResearchResults results) {
-        if (results == null) return 0.0;
+        if (results == null) {
+            return 0.0;
+        }
 
-        int categories = results.getCategorizedResults() != null ? results.getCategorizedResults().size() : 0;
+        int categories = results.getCategorizedResults() != null ? results.getCategorizedResults()
+            .size() : 0;
         int sources = getAllCitations().size();
-        int insights = results.getInsights() != null ? results.getInsights().size() : 0;
+        int insights = results.getInsights() != null ? results.getInsights()
+            .size() : 0;
 
         double categoryScore = Math.min(categories / 6.0, 1.0);
         double sourceScore = Math.min(sources / 30.0, 1.0);
@@ -468,8 +433,11 @@ public class DeepResearchResult {
         }
 
         Map<String, String> allInsights = results.getInsights();
-        List<Map.Entry<String, String>> sortedInsights = allInsights.entrySet().stream()
-            .sorted((e1, e2) -> Integer.compare(e2.getValue().length(), e1.getValue().length()))
+        List<Map.Entry<String, String>> sortedInsights = allInsights.entrySet()
+            .stream()
+            .sorted((e1, e2) -> Integer.compare(e2.getValue()
+                .length(), e1.getValue()
+                .length()))
             .limit(5)
             .collect(Collectors.toList());
 
@@ -492,12 +460,14 @@ public class DeepResearchResult {
         int count = 0;
         for (String word : words) {
             if (word.length() > 3 && count < 5) {
-                title.append(word).append(" ");
+                title.append(word)
+                    .append(" ");
                 count++;
             }
         }
 
-        return title.toString().trim();
+        return title.toString()
+            .trim();
     }
 
     private double calculateInsightConfidence(String insight, ResearchResults results) {
@@ -519,43 +489,47 @@ public class DeepResearchResult {
         metadata.put("researchComplexity", determineResearchComplexity());
 
         if (results != null && results.getCategorizedResults() != null) {
-            metadata.put("categories", results.getCategorizedResults().keySet());
+            metadata.put("categories", results.getCategorizedResults()
+                .keySet());
         }
     }
 
     private String determineResearchComplexity() {
         int sources = getAllCitations().size();
-        int categories = results != null && results.getCategorizedResults() != null ?
-            results.getCategorizedResults().size() : 0;
+        int categories = results != null && results.getCategorizedResults() != null ? results.getCategorizedResults()
+            .size() : 0;
 
-        if (sources >= 40 && categories >= 6) return "Expert";
-        if (sources >= 25 && categories >= 4) return "Comprehensive";
-        if (sources >= 15 && categories >= 3) return "Standard";
+        if (sources >= 40 && categories >= 6) {
+            return "Expert";
+        }
+        if (sources >= 25 && categories >= 4) {
+            return "Comprehensive";
+        }
+        if (sources >= 15 && categories >= 3) {
+            return "Standard";
+        }
         return "Basic";
     }
 
     private String getQualityMetricsSummary() {
-        if (qualityMetrics == null) return "Quality metrics not available";
-
-        StringBuilder summary = new StringBuilder();
-        summary.append(String.format("- **Overall Quality Score**: %.1f/10\n",
-            qualityMetrics.getOverallScore() * 10));
-        summary.append(String.format("- **Word Count**: %,d words\n",
-            qualityMetrics.getWordCount()));
-        summary.append(String.format("- **Sources Analyzed**: %,d\n",
-            getAllCitations().size()));
-
-        if (results != null && results.getCategorizedResults() != null) {
-            summary.append(String.format("- **Research Categories**: %d\n",
-                results.getCategorizedResults().size()));
+        if (qualityMetrics == null) {
+            return "Quality metrics not available";
         }
 
-        summary.append(String.format("- **Average Source Quality**: %.1f/10\n",
-            qualityMetrics.getSourceQualityScore() * 10));
+        StringBuilder summary = new StringBuilder();
+        summary.append(String.format("- **Overall Quality Score**: %.1f/10\n", qualityMetrics.getOverallScore() * 10));
+        summary.append(String.format("- **Word Count**: %,d words\n", qualityMetrics.getWordCount()));
+        summary.append(String.format("- **Sources Analyzed**: %,d\n", getAllCitations().size()));
+
+        if (results != null && results.getCategorizedResults() != null) {
+            summary.append(String.format("- **Research Categories**: %d\n", results.getCategorizedResults()
+                .size()));
+        }
+
+        summary.append(String.format("- **Average Source Quality**: %.1f/10\n", qualityMetrics.getSourceQualityScore() * 10));
 
         if (config != null) {
-            summary.append(String.format("- **Research Depth**: %s\n",
-                config.getResearchDepth()));
+            summary.append(String.format("- **Research Depth**: %s\n", config.getResearchDepth()));
         }
 
         return summary.toString();
@@ -564,34 +538,36 @@ public class DeepResearchResult {
     private String formatBibliography() {
         StringBuilder bibliography = new StringBuilder();
 
-        // Try categorized first (from results version)
-        if (results != null && results.getCategorizedResults() != null && !results.getCategorizedResults().isEmpty()) {
+        if (results != null && results.getCategorizedResults() != null && !results.getCategorizedResults()
+            .isEmpty()) {
             Map<String, List<CitationResult>> categorized = results.getCategorizedResults();
             for (Map.Entry<String, List<CitationResult>> category : categorized.entrySet()) {
-                bibliography.append("### ").append(capitalize(category.getKey())).append("\n\n");
+                bibliography.append("### ")
+                    .append(capitalize(category.getKey()))
+                    .append("\n\n");
                 List<CitationResult> citations = category.getValue();
                 for (int i = 0; i < citations.size(); i++) {
                     CitationResult citation = citations.get(i);
                     bibliography.append(String.format("%d. **%s**\n", i + 1, citation.getTitle()));
                     bibliography.append(String.format("   - Source: %s\n", citation.getUrl()));
-                    bibliography.append(String.format("   - Relevance Score: %.1f/10\n",
-                        citation.getRelevanceScore() * 10));
+                    bibliography.append(String.format("   - Relevance Score: %.1f/10\n", citation.getRelevanceScore() * 10));
                     bibliography.append("\n");
                 }
             }
         } else {
-            // Fallback to domain grouping (from models version)
+
             Map<String, List<CitationResult>> citationsByDomain = getAllCitations().stream()
                 .collect(Collectors.groupingBy(CitationResult::getDomain));
 
             int counter = 1;
             for (Map.Entry<String, List<CitationResult>> domainEntry : citationsByDomain.entrySet()) {
-                bibliography.append("### ").append(capitalize(domainEntry.getKey())).append("\n\n");
+                bibliography.append("### ")
+                    .append(capitalize(domainEntry.getKey()))
+                    .append("\n\n");
                 for (CitationResult citation : domainEntry.getValue()) {
                     bibliography.append(String.format("%d. **%s**\n", counter++, citation.getTitle()));
                     bibliography.append(String.format("   - URL: %s\n", citation.getUrl()));
-                    bibliography.append(String.format("   - Relevance Score: %.1f/10\n",
-                        citation.getRelevanceScore() * 10));
+                    bibliography.append(String.format("   - Relevance Score: %.1f/10\n", citation.getRelevanceScore() * 10));
                     bibliography.append("\n");
                 }
             }
@@ -601,12 +577,17 @@ public class DeepResearchResult {
     }
 
     private String capitalize(String str) {
-        if (str == null || str.isEmpty()) return str;
-        return str.substring(0, 1).toUpperCase() + str.substring(1).toLowerCase();
+        if (str == null || str.isEmpty()) {
+            return str;
+        }
+        return str.substring(0, 1)
+            .toUpperCase() + str.substring(1)
+            .toLowerCase();
     }
 
     private String generateBasicExecutiveSummary(String content) {
-        if (content == null || content.trim().isEmpty()) {
+        if (content == null || content.trim()
+            .isEmpty()) {
             return "Executive summary not available.";
         }
 
@@ -615,7 +596,8 @@ public class DeepResearchResult {
 
         int sentenceCount = Math.min(3, sentences.length);
         for (int i = 0; i < sentenceCount; i++) {
-            summary.append(sentences[i].trim()).append(". ");
+            summary.append(sentences[i].trim())
+                .append(". ");
         }
 
         return summary.toString();
@@ -635,40 +617,99 @@ public class DeepResearchResult {
         return new ResearchResults(citations, categorized, insights);
     }
 
-    // Getters - comprehensive set from both versions
-    public String getSessionId() { return sessionId; }
-    public String getOriginalQuery() { return originalQuery; }
-    public String getNarrative() { return narrative; }
-    public String getFinalReport() { return finalReport; }
-    public String getExecutiveSummary() { return executiveSummary; }
-    public String getMethodology() { return methodology; }
-    public ResearchResults getResults() { return results; }
-    public List<CitationResult> getAllCitations() { return new ArrayList<>(allCitations); }
-    public List<ResearchQuestion> getResearchQuestions() { return new ArrayList<>(researchQuestions); }
-    public Map<String, Object> getKnowledgeMap() { return new HashMap<>(knowledgeMap); }
-    public Duration getProcessingTime() { return processingTime; }
-    public String getStrategyUsed() { return strategyUsed; }
-    public Instant getCreatedAt() { return createdAt; }
-    public Instant getCompletedAt() { return completedAt; }
-    public QualityMetrics getQualityMetrics() { return qualityMetrics; }
-    public PerformanceMetrics getPerformanceMetrics() { return performanceMetrics; }
-    public ResearchMetrics getMetrics() { return metrics; }
-    public DeepResearchConfig getConfig() { return config; }
-    public List<ResearchInsight> getKeyInsights() { return new ArrayList<>(keyInsights); }
-    public Map<String, Object> getMetadata() { return new HashMap<>(metadata); }
-    public Map<String, Instant> getPhaseTimestamps() { return new HashMap<>(phaseTimestamps); }
+    public String getSessionId() {
+        return sessionId;
+    }
 
-    // Supporting Classes - merged from both versions
+    public String getOriginalQuery() {
+        return originalQuery;
+    }
+
+    public String getNarrative() {
+        return narrative;
+    }
+
+    public String getFinalReport() {
+        return finalReport;
+    }
+
+    public String getExecutiveSummary() {
+        return executiveSummary;
+    }
+
+    public String getMethodology() {
+        return methodology;
+    }
+
+    public ResearchResults getResults() {
+        return results;
+    }
+
+    public List<CitationResult> getAllCitations() {
+        return new ArrayList<>(allCitations);
+    }
+
+    public List<ResearchQuestion> getResearchQuestions() {
+        return new ArrayList<>(researchQuestions);
+    }
+
+    public Map<String, Object> getKnowledgeMap() {
+        return new HashMap<>(knowledgeMap);
+    }
+
+    public Duration getProcessingTime() {
+        return processingTime;
+    }
+
+    public String getStrategyUsed() {
+        return strategyUsed;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public QualityMetrics getQualityMetrics() {
+        return qualityMetrics;
+    }
+
+    public PerformanceMetrics getPerformanceMetrics() {
+        return performanceMetrics;
+    }
+
+    public ResearchMetrics getMetrics() {
+        return metrics;
+    }
+
+    public DeepResearchConfig getConfig() {
+        return config;
+    }
+
+    public List<ResearchInsight> getKeyInsights() {
+        return new ArrayList<>(keyInsights);
+    }
+
+    public Map<String, Object> getMetadata() {
+        return new HashMap<>(metadata);
+    }
+
+    public Map<String, Instant> getPhaseTimestamps() {
+        return new HashMap<>(phaseTimestamps);
+    }
 
     public static class QualityMetrics {
+
         private final int wordCount;
         private final double sourceQualityScore;
         private final double coherenceScore;
         private final double comprehensivenessScore;
         private final double overallScore;
 
-        public QualityMetrics(int wordCount, double sourceQualityScore,
-            double coherenceScore, double comprehensivenessScore) {
+        public QualityMetrics(int wordCount, double sourceQualityScore, double coherenceScore, double comprehensivenessScore) {
             this.wordCount = wordCount;
             this.sourceQualityScore = sourceQualityScore;
             this.coherenceScore = coherenceScore;
@@ -676,14 +717,29 @@ public class DeepResearchResult {
             this.overallScore = (sourceQualityScore + coherenceScore + comprehensivenessScore) / 3.0;
         }
 
-        public int getWordCount() { return wordCount; }
-        public double getSourceQualityScore() { return sourceQualityScore; }
-        public double getCoherenceScore() { return coherenceScore; }
-        public double getComprehensivenessScore() { return comprehensivenessScore; }
-        public double getOverallScore() { return overallScore; }
+        public int getWordCount() {
+            return wordCount;
+        }
+
+        public double getSourceQualityScore() {
+            return sourceQualityScore;
+        }
+
+        public double getCoherenceScore() {
+            return coherenceScore;
+        }
+
+        public double getComprehensivenessScore() {
+            return comprehensivenessScore;
+        }
+
+        public double getOverallScore() {
+            return overallScore;
+        }
     }
 
     public static class PerformanceMetrics {
+
         private final int totalSources;
         private final int totalCategories;
         private final double averageRelevanceScore;
@@ -691,19 +747,20 @@ public class DeepResearchResult {
 
         public PerformanceMetrics(ResearchResults results) {
             if (results != null) {
-                this.totalSources = results.getAllCitations().size();
-                this.totalCategories = results.getCategorizedResults() != null ?
-                    results.getCategorizedResults().size() : 0;
-                this.averageRelevanceScore = results.getAllCitations().stream()
+                this.totalSources = results.getAllCitations()
+                    .size();
+                this.totalCategories = results.getCategorizedResults() != null ? results.getCategorizedResults()
+                    .size() : 0;
+                this.averageRelevanceScore = results.getAllCitations()
+                    .stream()
                     .mapToDouble(CitationResult::getRelevanceScore)
                     .average()
                     .orElse(0.0);
-                this.categoryDistribution = results.getCategorizedResults() != null ?
-                    results.getCategorizedResults().entrySet().stream()
-                        .collect(Collectors.toMap(
-                            Map.Entry::getKey,
-                            entry -> entry.getValue().size()
-                        )) : new HashMap<>();
+                this.categoryDistribution = results.getCategorizedResults() != null ? results.getCategorizedResults()
+                    .entrySet()
+                    .stream()
+                    .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue()
+                        .size())) : new HashMap<>();
             } else {
                 this.totalSources = 0;
                 this.totalCategories = 0;
@@ -712,15 +769,25 @@ public class DeepResearchResult {
             }
         }
 
-        public int getTotalSources() { return totalSources; }
-        public int getTotalCategories() { return totalCategories; }
-        public double getAverageRelevanceScore() { return averageRelevanceScore; }
+        public int getTotalSources() {
+            return totalSources;
+        }
+
+        public int getTotalCategories() {
+            return totalCategories;
+        }
+
+        public double getAverageRelevanceScore() {
+            return averageRelevanceScore;
+        }
+
         public Map<String, Integer> getCategoryDistribution() {
             return new HashMap<>(categoryDistribution);
         }
     }
 
     public static class ResearchMetrics {
+
         private final int totalSources;
         private final int totalQuestions;
         private final int answeredQuestions;
@@ -728,8 +795,8 @@ public class DeepResearchResult {
         private final int uniqueDomains;
         private final Duration processingTime;
 
-        public ResearchMetrics(int totalSources, int totalQuestions, int answeredQuestions,
-            double avgRelevanceScore, int uniqueDomains, Duration processingTime) {
+        public ResearchMetrics(int totalSources, int totalQuestions, int answeredQuestions, double avgRelevanceScore, int uniqueDomains,
+            Duration processingTime) {
             this.totalSources = totalSources;
             this.totalQuestions = totalQuestions;
             this.answeredQuestions = answeredQuestions;
@@ -738,12 +805,29 @@ public class DeepResearchResult {
             this.processingTime = processingTime;
         }
 
-        public int getTotalSources() { return totalSources; }
-        public int getTotalQuestions() { return totalQuestions; }
-        public int getAnsweredQuestions() { return answeredQuestions; }
-        public double getAvgRelevanceScore() { return avgRelevanceScore; }
-        public int getUniqueDomains() { return uniqueDomains; }
-        public Duration getProcessingTime() { return processingTime; }
+        public int getTotalSources() {
+            return totalSources;
+        }
+
+        public int getTotalQuestions() {
+            return totalQuestions;
+        }
+
+        public int getAnsweredQuestions() {
+            return answeredQuestions;
+        }
+
+        public double getAvgRelevanceScore() {
+            return avgRelevanceScore;
+        }
+
+        public int getUniqueDomains() {
+            return uniqueDomains;
+        }
+
+        public Duration getProcessingTime() {
+            return processingTime;
+        }
 
         public double getCompletionRate() {
             return totalQuestions > 0 ? (double) answeredQuestions / totalQuestions : 0.0;
@@ -760,6 +844,7 @@ public class DeepResearchResult {
     }
 
     public static class ResearchInsight {
+
         private final String title;
         private final String content;
         private final double confidence;
@@ -772,13 +857,25 @@ public class DeepResearchResult {
             this.extractedAt = Instant.now();
         }
 
-        public String getTitle() { return title; }
-        public String getContent() { return content; }
-        public double getConfidence() { return confidence; }
-        public Instant getExtractedAt() { return extractedAt; }
+        public String getTitle() {
+            return title;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public double getConfidence() {
+            return confidence;
+        }
+
+        public Instant getExtractedAt() {
+            return extractedAt;
+        }
     }
 
     public static class ResearchSummary {
+
         private final String query;
         private final int insightCount;
         private final int sourceCount;
@@ -787,8 +884,7 @@ public class DeepResearchResult {
         private final Instant createdAt;
         private final String strategy;
 
-        public ResearchSummary(String query, int insightCount, int sourceCount,
-            int wordCount, double qualityScore, Instant createdAt, String strategy) {
+        public ResearchSummary(String query, int insightCount, int sourceCount, int wordCount, double qualityScore, Instant createdAt, String strategy) {
             this.query = query;
             this.insightCount = insightCount;
             this.sourceCount = sourceCount;
@@ -798,38 +894,64 @@ public class DeepResearchResult {
             this.strategy = strategy;
         }
 
-        // Getters
-        public String getQuery() { return query; }
-        public int getInsightCount() { return insightCount; }
-        public int getSourceCount() { return sourceCount; }
-        public int getWordCount() { return wordCount; }
-        public double getQualityScore() { return qualityScore; }
-        public Instant getCreatedAt() { return createdAt; }
-        public String getStrategy() { return strategy; }
+        public String getQuery() {
+            return query;
+        }
+
+        public int getInsightCount() {
+            return insightCount;
+        }
+
+        public int getSourceCount() {
+            return sourceCount;
+        }
+
+        public int getWordCount() {
+            return wordCount;
+        }
+
+        public double getQualityScore() {
+            return qualityScore;
+        }
+
+        public Instant getCreatedAt() {
+            return createdAt;
+        }
+
+        public String getStrategy() {
+            return strategy;
+        }
 
         @Override
         public String toString() {
-            return String.format("Research Summary: '%s' - %d sources, %d insights, %,d words (Quality: %.1f/10) [%s]",
-                query, sourceCount, insightCount, wordCount, qualityScore * 10, strategy != null ? strategy : "N/A");
+            return String.format("Research Summary: '%s' - %d sources, %d insights, %,d words (Quality: %.1f/10) [%s]", query, sourceCount, insightCount,
+                wordCount, qualityScore * 10, strategy != null ? strategy : "N/A");
         }
     }
 
     public static class PerformanceAnalytics {
+
         private final PerformanceMetrics performanceMetrics;
-        private final Object researchMetrics; // From ResearchResults.getMetrics()
+        private final Object researchMetrics;
         private final Map<String, Instant> phaseTimestamps;
 
-        public PerformanceAnalytics(PerformanceMetrics performanceMetrics,
-            Object researchMetrics,
-            Map<String, Instant> phaseTimestamps) {
+        public PerformanceAnalytics(PerformanceMetrics performanceMetrics, Object researchMetrics, Map<String, Instant> phaseTimestamps) {
             this.performanceMetrics = performanceMetrics;
             this.researchMetrics = researchMetrics;
             this.phaseTimestamps = phaseTimestamps != null ? new HashMap<>(phaseTimestamps) : new HashMap<>();
         }
 
-        public PerformanceMetrics getPerformanceMetrics() { return performanceMetrics; }
-        public Object getResearchMetrics() { return researchMetrics; }
-        public Map<String, Instant> getPhaseTimestamps() { return new HashMap<>(phaseTimestamps); }
+        public PerformanceMetrics getPerformanceMetrics() {
+            return performanceMetrics;
+        }
+
+        public Object getResearchMetrics() {
+            return researchMetrics;
+        }
+
+        public Map<String, Instant> getPhaseTimestamps() {
+            return new HashMap<>(phaseTimestamps);
+        }
 
         public String generateReport() {
             StringBuilder report = new StringBuilder();
@@ -853,6 +975,7 @@ public class DeepResearchResult {
     }
 
     public static class ValidationResult {
+
         private final List<String> issues;
         private final List<String> warnings;
         private final boolean isValid;
@@ -863,10 +986,21 @@ public class DeepResearchResult {
             this.isValid = isValid;
         }
 
-        public List<String> getIssues() { return new ArrayList<>(issues); }
-        public List<String> getWarnings() { return new ArrayList<>(warnings); }
-        public boolean isValid() { return isValid; }
-        public boolean hasWarnings() { return !warnings.isEmpty(); }
+        public List<String> getIssues() {
+            return new ArrayList<>(issues);
+        }
+
+        public List<String> getWarnings() {
+            return new ArrayList<>(warnings);
+        }
+
+        public boolean isValid() {
+            return isValid;
+        }
+
+        public boolean hasWarnings() {
+            return !warnings.isEmpty();
+        }
 
         public String getReport() {
             StringBuilder report = new StringBuilder();
@@ -880,14 +1014,18 @@ public class DeepResearchResult {
             if (!issues.isEmpty()) {
                 report.append("\nIssues:\n");
                 for (String issue : issues) {
-                    report.append("- ").append(issue).append("\n");
+                    report.append("- ")
+                        .append(issue)
+                        .append("\n");
                 }
             }
 
             if (!warnings.isEmpty()) {
                 report.append("\nWarnings:\n");
                 for (String warning : warnings) {
-                    report.append("- ").append(warning).append("\n");
+                    report.append("- ")
+                        .append(warning)
+                        .append("\n");
                 }
             }
 
@@ -895,14 +1033,11 @@ public class DeepResearchResult {
         }
     }
 
-    // Additional utility methods for backward compatibility and enhanced functionality
-
     /**
      * Check if this result contains comprehensive research data
      */
     public boolean isComprehensive() {
-        return getAllCitations().size() >= 15 &&
-            (narrative != null ? narrative.split("\\s+").length : 0) >= 2000 &&
+        return getAllCitations().size() >= 15 && (narrative != null ? narrative.split("\\s+").length : 0) >= 2000 &&
             (qualityMetrics != null ? qualityMetrics.getOverallScore() >= 0.7 : false);
     }
 
@@ -937,7 +1072,8 @@ public class DeepResearchResult {
         if (!citations.isEmpty()) {
             stats.put("averageRelevanceScore", citations.stream()
                 .mapToDouble(CitationResult::getRelevanceScore)
-                .average().orElse(0.0));
+                .average()
+                .orElse(0.0));
 
             Map<String, Long> domainCounts = citations.stream()
                 .collect(Collectors.groupingBy(CitationResult::getDomain, Collectors.counting()));
@@ -968,8 +1104,7 @@ public class DeepResearchResult {
         compact.put("status", isValid() ? "completed" : "incomplete");
         compact.put("sources", getAllCitations().size());
         compact.put("wordCount", (narrative != null ? narrative : finalReport).split("\\s+").length);
-        compact.put("qualityScore", qualityMetrics != null ?
-            Math.round(qualityMetrics.getOverallScore() * 100.0) / 10.0 : 0.0);
+        compact.put("qualityScore", qualityMetrics != null ? Math.round(qualityMetrics.getOverallScore() * 100.0) / 10.0 : 0.0);
         compact.put("createdAt", createdAt);
         compact.put("processingTime", processingTime != null ? processingTime.toMinutes() : 0);
         compact.put("researchDepth", getResearchDepthAssessment());
@@ -991,39 +1126,31 @@ public class DeepResearchResult {
     public String generateReportCard() {
         StringBuilder card = new StringBuilder();
         card.append("📊 Research Report Card\n");
-        card.append("=" .repeat(30)).append("\n\n");
+        card.append("=".repeat(30))
+            .append("\n\n");
 
-        // Content Quality Grade
         String content = narrative != null ? narrative : finalReport;
         int wordCount = content != null ? content.split("\\s+").length : 0;
-        String contentGrade = wordCount >= 5000 ? "A" : wordCount >= 3000 ? "B" :
-            wordCount >= 1500 ? "C" : wordCount >= 500 ? "D" : "F";
+        String contentGrade = wordCount >= 5000 ? "A" : wordCount >= 3000 ? "B" : wordCount >= 1500 ? "C" : wordCount >= 500 ? "D" : "F";
         card.append(String.format("📝 Content Quality: %s (%,d words)\n", contentGrade, wordCount));
 
-        // Source Quality Grade
         int sourceCount = getAllCitations().size();
         double avgRelevance = getAllCitations().stream()
             .mapToDouble(CitationResult::getRelevanceScore)
-            .average().orElse(0.0);
-        String sourceGrade = sourceCount >= 25 && avgRelevance >= 0.8 ? "A" :
-            sourceCount >= 15 && avgRelevance >= 0.7 ? "B" :
-                sourceCount >= 10 && avgRelevance >= 0.6 ? "C" :
-                    sourceCount >= 5 && avgRelevance >= 0.5 ? "D" : "F";
-        card.append(String.format("📚 Source Quality: %s (%d sources, %.1f avg relevance)\n",
-            sourceGrade, sourceCount, avgRelevance * 10));
+            .average()
+            .orElse(0.0);
+        String sourceGrade = sourceCount >= 25 && avgRelevance >= 0.8 ? "A" : sourceCount >= 15 && avgRelevance >= 0.7 ? "B" :
+            sourceCount >= 10 && avgRelevance >= 0.6 ? "C" : sourceCount >= 5 && avgRelevance >= 0.5 ? "D" : "F";
+        card.append(String.format("📚 Source Quality: %s (%d sources, %.1f avg relevance)\n", sourceGrade, sourceCount, avgRelevance * 10));
 
-        // Research Depth Grade
         String depthAssessment = getResearchDepthAssessment();
-        String depthGrade = depthAssessment.startsWith("Expert") ? "A" :
-            depthAssessment.startsWith("Comprehensive") ? "B" :
-                depthAssessment.startsWith("Standard") ? "C" : "D";
+        String depthGrade =
+            depthAssessment.startsWith("Expert") ? "A" : depthAssessment.startsWith("Comprehensive") ? "B" : depthAssessment.startsWith("Standard") ? "C" : "D";
         card.append(String.format("🔍 Research Depth: %s (%s)\n", depthGrade, depthAssessment));
 
-        // Overall Grade
         double overallScore = qualityMetrics != null ? qualityMetrics.getOverallScore() : 0.0;
-        String overallGrade = overallScore >= 0.9 ? "A+" : overallScore >= 0.8 ? "A" :
-            overallScore >= 0.7 ? "B" : overallScore >= 0.6 ? "C" :
-                overallScore >= 0.5 ? "D" : "F";
+        String overallGrade =
+            overallScore >= 0.9 ? "A+" : overallScore >= 0.8 ? "A" : overallScore >= 0.7 ? "B" : overallScore >= 0.6 ? "C" : overallScore >= 0.5 ? "D" : "F";
         card.append(String.format("🎯 Overall Grade: %s (%.1f/10)\n", overallGrade, overallScore * 10));
 
         return card.toString();

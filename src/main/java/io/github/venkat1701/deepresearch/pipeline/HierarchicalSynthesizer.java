@@ -33,10 +33,10 @@ public class HierarchicalSynthesizer {
         try {
             logger.info("Starting hierarchical synthesis for " + sectionContents.size() + " sections");
 
-            // Level 1: Synthesize related sections
+            
             Map<String, String> groupSyntheses = synthesizeRelatedSections(sectionContents);
 
-            // Level 2: Cross-group synthesis
+            
             String finalSynthesis = synthesizeAcrossGroups(groupSyntheses, context);
 
             logger.info("Hierarchical synthesis completed");
@@ -44,7 +44,7 @@ public class HierarchicalSynthesizer {
 
         } catch (Exception e) {
             logger.warning("Hierarchical synthesis failed: " + e.getMessage());
-            // Fallback to simple concatenation
+            
             return String.join("\n\n", sectionContents.values());
         }
     }
@@ -123,7 +123,7 @@ public class HierarchicalSynthesizer {
         }
 
         try {
-            // Create synthesis prompt based on group type
+            
             String synthesisPrompt = buildGroupSynthesisPrompt(groupSections, groupType);
 
             LLMResponse<String> response = llmClient.complete(synthesisPrompt, String.class);
@@ -131,7 +131,7 @@ public class HierarchicalSynthesizer {
 
         } catch (Exception e) {
             logger.warning("Group synthesis failed for " + groupType + ": " + e.getMessage());
-            // Fallback to simple concatenation
+            
             return String.join("\n\n", groupSections);
         }
     }
@@ -181,13 +181,13 @@ public class HierarchicalSynthesizer {
         DeepResearchContext context) {
         StringBuilder synthesis = new StringBuilder();
 
-        // Order groups logically for narrative flow
+        
         String[] preferredOrder = {
             "overview", "architecture", "implementation",
             "examples", "performance", "security", "analysis"
         };
 
-        // Add groups in preferred order
+        
         for (String groupKey : preferredOrder) {
             if (groupSyntheses.containsKey(groupKey)) {
                 synthesis.append(createGroupTransition(groupKey));
@@ -195,7 +195,7 @@ public class HierarchicalSynthesizer {
             }
         }
 
-        // Add any remaining groups not in preferred order
+        
         for (Map.Entry<String, String> group : groupSyntheses.entrySet()) {
             if (!Arrays.asList(preferredOrder).contains(group.getKey())) {
                 synthesis.append(createGroupTransition(group.getKey()));
@@ -228,7 +228,7 @@ public class HierarchicalSynthesizer {
     private String applyFinalCoherenceEnhancement(String content, DeepResearchContext context) {
         try {
             if (content.length() < 5000) {
-                // Content is relatively short, apply basic enhancement
+                
                 return content;
             }
 
@@ -288,7 +288,7 @@ public class HierarchicalSynthesizer {
 
             } catch (Exception e) {
                 logger.warning("Insight synthesis failed for: " + questionKey);
-                // Fallback to combining insights
+                
                 synthesizedInsights.put(questionKey, String.join(" ", insights));
             }
         }

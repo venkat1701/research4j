@@ -8,11 +8,10 @@ import java.util.stream.Collectors;
 import io.github.venkat1701.citation.CitationResult;
 
 public class ResearchQualityAnalyzer {
+
     private static final Logger logger = Logger.getLogger(ResearchQualityAnalyzer.class.getName());
 
-    public List<CitationResult> filterAndRankResults(List<CitationResult> results,
-        ResearchQuestion question,
-        DeepResearchConfig config) {
+    public List<CitationResult> filterAndRankResults(List<CitationResult> results, ResearchQuestion question, DeepResearchConfig config) {
         return results.stream()
             .filter(this::isHighQualitySource)
             .filter(result -> isRelevantToQuestion(result, question))
@@ -21,10 +20,9 @@ public class ResearchQualityAnalyzer {
             .collect(Collectors.toList());
     }
 
-    public boolean isResearchSufficient(List<CitationResult> results,
-        ResearchQuestion question,
-        DeepResearchConfig config) {
-        int minSources = config.getResearchDepth().ordinal() * 5 + 10;
+    public boolean isResearchSufficient(List<CitationResult> results, ResearchQuestion question, DeepResearchConfig config) {
+        int minSources = config.getResearchDepth()
+            .ordinal() * 5 + 10;
         double avgQuality = results.stream()
             .mapToDouble(CitationResult::getRelevanceScore)
             .average()
@@ -34,17 +32,22 @@ public class ResearchQualityAnalyzer {
     }
 
     private boolean isHighQualitySource(CitationResult result) {
-        if (result.getRelevanceScore() < 0.4) return false;
-        if (result.getContent() == null || result.getContent().length() < 200) return false;
+        if (result.getRelevanceScore() < 0.4) {
+            return false;
+        }
+        if (result.getContent() == null || result.getContent()
+            .length() < 200) {
+            return false;
+        }
 
-        String domain = result.getDomain().toLowerCase();
-        return !domain.contains("forum") &&
-            !domain.contains("reddit") &&
-            !domain.contains("quora");
+        String domain = result.getDomain()
+            .toLowerCase();
+        return !domain.contains("forum") && !domain.contains("reddit") && !domain.contains("quora");
     }
 
     private boolean isRelevantToQuestion(CitationResult result, ResearchQuestion question) {
-        String questionLower = question.getQuestion().toLowerCase();
+        String questionLower = question.getQuestion()
+            .toLowerCase();
         String contentLower = (result.getTitle() + " " + result.getContent()).toLowerCase();
 
         String[] questionWords = questionLower.split("\\W+");

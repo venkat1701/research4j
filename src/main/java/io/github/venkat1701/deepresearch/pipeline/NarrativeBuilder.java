@@ -25,11 +25,11 @@ public class NarrativeBuilder {
 
     private static final Logger logger = Logger.getLogger(NarrativeBuilder.class.getName());
 
-    // Configuration constants inspired by real-world Deep Research systems
-    private final int TARGET_NARRATIVE_LENGTH = 8000; // Target 8000+ words for comprehensive reports
-    private final int MAX_SECTION_LENGTH = 1200; // Max words per section to prevent context overflow
-    private final int CONTEXT_WINDOW_LIMIT = 32000; // Conservative context window management
-    private final double CHUNK_OVERLAP_RATIO = 0.15; // 15% overlap for context continuity
+    
+    private final int TARGET_NARRATIVE_LENGTH = 8000; 
+    private final int MAX_SECTION_LENGTH = 1200; 
+    private final int CONTEXT_WINDOW_LIMIT = 32000; 
+    private final double CHUNK_OVERLAP_RATIO = 0.15; 
 
     private final LLMClient llmClient;
     private final HierarchicalSynthesizer hierarchicalSynthesizer;
@@ -54,21 +54,21 @@ public class NarrativeBuilder {
         try {
             logger.info("Building comprehensive narrative for session: " + context.getSessionId());
 
-            // Phase 1: Intelligent narrative structure planning
+            
             NarrativeStructure structure = planAdaptiveNarrativeStructure(context);
 
-            // Phase 2: Context-aware content chunking
+            
             List<ContextAwareChunker.ContentChunk> contentChunks = contextChunker.chunkContent(
                 synthesizedKnowledge, context, structure);
 
-            // Phase 3: Parallel section generation with context management
+            
             Map<String, String> sectionContents = generateSectionsInParallel(
                 structure, contentChunks, context);
 
-            // Phase 4: Progressive narrative assembly
+            
             String narrative = assembleProgressiveNarrative(structure, sectionContents, context);
 
-            // Phase 5: Final coherence enhancement
+            
             String enhancedNarrative = enhanceNarrativeCoherence(narrative, context);
 
             logger.info("Comprehensive narrative completed: " + enhancedNarrative.length() + " characters");
@@ -88,7 +88,7 @@ public class NarrativeBuilder {
         try {
             String structurePlanningPrompt = buildAdvancedStructurePlanningPrompt(context);
 
-            // Use chunked approach for complex context
+            
             List<ContextAwareChunker.ContextChunk> planningChunks = contextChunker.chunkPrompt(structurePlanningPrompt);
 
             NarrativeStructure structure = null;
@@ -189,16 +189,16 @@ public class NarrativeBuilder {
         List<ContextAwareChunker.ContentChunk> contentChunks,
         DeepResearchContext context) {
         try {
-            // Get relevant content chunks for this section
+            
             List<ContextAwareChunker.ContentChunk> relevantChunks = filterRelevantChunks(section, contentChunks);
 
-            // Build section with overlapping context windows
+            
             StringBuilder sectionBuilder = new StringBuilder();
 
             for (ContextAwareChunker.ContentChunk chunk : relevantChunks) {
                 String sectionPrompt = buildContextAwareSectionPrompt(section, chunk, context);
 
-                // Ensure prompt fits within context limits
+                
                 if (countTokens(sectionPrompt) > CONTEXT_WINDOW_LIMIT) {
                     sectionPrompt = contextChunker.compressPrompt(sectionPrompt, CONTEXT_WINDOW_LIMIT);
                 }
@@ -206,11 +206,11 @@ public class NarrativeBuilder {
                 LLMResponse<String> response = llmClient.complete(sectionPrompt, String.class);
                 String chunkContent = response.structuredOutput();
 
-                // Apply hierarchical synthesis to merge chunks
+                
                 sectionBuilder.append(chunkContent).append("\n\n");
             }
 
-            // Final section synthesis and enhancement
+            
             String rawSection = sectionBuilder.toString();
             return enhanceSectionCoherence(rawSection, section, context);
 
@@ -281,20 +281,20 @@ public class NarrativeBuilder {
         DeepResearchContext context) {
         StringBuilder narrative = new StringBuilder();
 
-        // Executive Summary with context synthesis
+        
         narrative.append(buildExecutiveSummary(context, sectionContents));
         narrative.append("\n\n");
 
-        // Progressive section assembly with transition synthesis
+        
         for (int i = 0; i < structure.getSections().size(); i++) {
             NarrativeSection section = structure.getSections().get(i);
             String sectionContent = sectionContents.getOrDefault(section.getTitle(), "");
 
-            // Add section with proper formatting
+            
             narrative.append("## ").append(section.getTitle()).append("\n\n");
             narrative.append(sectionContent);
 
-            // Add intelligent transitions between sections
+            
             if (i < structure.getSections().size() - 1) {
                 String transition = generateIntelligentTransition(
                     section, structure.getSections().get(i + 1), context);
@@ -304,11 +304,11 @@ public class NarrativeBuilder {
             narrative.append("\n\n");
         }
 
-        // Comprehensive conclusion
+        
         narrative.append(buildComprehensiveConclusion(context, sectionContents));
         narrative.append("\n\n");
 
-        // Enhanced bibliography with categorization
+        
         narrative.append(buildEnhancedBibliography(context));
 
         return narrative.toString();
@@ -319,13 +319,13 @@ public class NarrativeBuilder {
      */
     private String enhanceNarrativeCoherence(String narrative, DeepResearchContext context) {
         try {
-            // Check if narrative needs coherence enhancement
+            
             if (narrative.length() < TARGET_NARRATIVE_LENGTH * 0.8) {
                 logger.info("Narrative below target length, applying expansion enhancement");
                 return expandNarrativeContent(narrative, context);
             }
 
-            // Apply coherence enhancement through chunked processing
+            
             List<ContextAwareChunker.ContextChunk> narrativeChunks = contextChunker.chunkNarrative(narrative);
             StringBuilder enhancedNarrative = new StringBuilder();
 
@@ -342,7 +342,7 @@ public class NarrativeBuilder {
         }
     }
 
-    // Helper Methods
+    
     private int calculateResearchComplexity(DeepResearchContext context) {
         int complexity = 0;
         complexity += Math.min(context.getResearchQuestions().size() / 2, 3);
@@ -374,23 +374,23 @@ public class NarrativeBuilder {
     }
 
     private int countTokens(String text) {
-        // Approximate token counting (1 token ≈ 4 characters for English)
+        
         return text != null ? (int) Math.ceil(text.length() / 4.0) : 0;
     }
 
-    // Additional helper methods would be implemented here...
+    
     private List<ContextAwareChunker.ContentChunk> filterRelevantChunks(NarrativeSection section, List<ContextAwareChunker.ContentChunk> allChunks) {
-        // Implementation for filtering relevant chunks
+        
         return allChunks.stream().limit(5).collect(Collectors.toList());
     }
 
     private List<String> getRelevantInsights(NarrativeSection section, DeepResearchContext context) {
-        // Implementation for getting relevant insights
+        
         return new ArrayList<>();
     }
 
     private List<CitationResult> getRelevantCitations(NarrativeSection section, DeepResearchContext context) {
-        // Implementation for getting relevant citations
+        
         return new ArrayList<>();
     }
 
@@ -411,7 +411,7 @@ public class NarrativeBuilder {
         return formatted.toString();
     }
 
-    // Placeholder methods for complete implementation
+    
     private NarrativeStructure parseAndMergeStructure(String response, NarrativeStructure existing, DeepResearchContext context) {
         return existing != null ? existing : createAdaptiveDefaultStructure(context);
     }
@@ -441,7 +441,7 @@ public class NarrativeBuilder {
     }
 
     private String enhanceSectionCoherence(String rawSection, NarrativeSection section, DeepResearchContext context) {
-        return rawSection; // Placeholder implementation
+        return rawSection; 
     }
 
     private String buildExecutiveSummary(DeepResearchContext context, Map<String, String> sectionContents) {
@@ -461,10 +461,10 @@ public class NarrativeBuilder {
     }
 
     private String expandNarrativeContent(String narrative, DeepResearchContext context) {
-        return narrative; // Placeholder implementation
+        return narrative; 
     }
 
     private String enhanceChunkCoherence(ContextAwareChunker.ContextChunk chunk, DeepResearchContext context) {
-        return chunk.getContent(); // Placeholder implementation
+        return chunk.getContent(); 
     }
 }

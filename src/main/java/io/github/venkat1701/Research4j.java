@@ -47,14 +47,14 @@ public class Research4j implements AutoCloseable {
 
     private static final Logger logger = Logger.getLogger(Research4j.class.getName());
 
-    // Existing components (preserved for backward compatibility)
+    
     private final Research4jConfig config;
     private final DynamicResearchAgent agent;
     private final LLMClient llmClient;
     private final CitationService citationService;
     private final ReasoningEngine reasoningEngine;
 
-    // Deep Research components
+    
     private final DeepResearchEngine deepResearchEngine;
     private final boolean deepResearchEnabled;
 
@@ -66,7 +66,7 @@ public class Research4j implements AutoCloseable {
             this.reasoningEngine = new ReasoningEngine(llmClient);
             this.agent = new DynamicResearchAgent(citationService, reasoningEngine, llmClient);
 
-            // Initialize Deep Research Engine
+            
             this.deepResearchEngine = new DeepResearchEngine(llmClient, citationService);
             this.deepResearchEnabled = true;
 
@@ -79,9 +79,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // EXISTING RESEARCH4J METHODS (PRESERVED)
-    // ==========================================
+    
+    
+    
 
     /**
      * Standard research (existing functionality preserved)
@@ -127,9 +127,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // DEEP RESEARCH METHODS
-    // ==========================================
+    
+    
+    
 
     /**
      * Deep Research - Comprehensive analysis with context management
@@ -233,16 +233,16 @@ public class Research4j implements AutoCloseable {
         return deepResearch(query, createDefaultUserProfile(), narrativeConfig);
     }
 
-    // ==========================================
-    // MONITORING AND MANAGEMENT
-    // ==========================================
+    
+    
+    
 
     /**
      * Get deep research progress with detailed metrics
      */
     public DeepResearchProgress getDeepResearchProgress(String sessionId) {
         if (deepResearchEngine != null) {
-            // Note: DeepResearchEngine doesn't have getProgress method, so return null or implement differently
+            
             return null;
         }
         return null;
@@ -253,7 +253,7 @@ public class Research4j implements AutoCloseable {
      */
     public Map<String, DeepResearchProgress> getAllActiveDeepResearch() {
         if (deepResearchEngine != null) {
-            // Note: DeepResearchEngine doesn't have getAllActiveResearch method, so return empty map
+            
             return Map.of();
         }
         return Map.of();
@@ -264,7 +264,7 @@ public class Research4j implements AutoCloseable {
      */
     public boolean cancelDeepResearch(String sessionId) {
         if (deepResearchEngine != null) {
-            // Note: DeepResearchEngine doesn't have cancelResearch method, so return false
+            
             return false;
         }
         return false;
@@ -275,15 +275,15 @@ public class Research4j implements AutoCloseable {
      */
     public Object getMemoryManager() {
         if (deepResearchEngine != null) {
-            // Note: DeepResearchEngine doesn't have getMemoryManager method, so return null
+            
             return null;
         }
         return null;
     }
 
-    // ==========================================
-    // COMPARISON AND VALIDATION METHODS
-    // ==========================================
+    
+    
+    
 
     /**
      * Validate research quality and depth
@@ -293,9 +293,9 @@ public class Research4j implements AutoCloseable {
         return validator.validateComprehensiveQuality(result);
     }
 
-    // ==========================================
-    // SESSION MANAGEMENT
-    // ==========================================
+    
+    
+    
 
     public ResearchSession createSession() {
         return new ResearchSession(this, generateSessionId());
@@ -315,9 +315,9 @@ public class Research4j implements AutoCloseable {
         return new EnhancedResearchSession(this, generateSessionId(), userProfile);
     }
 
-    // ==========================================
-    // FACTORY METHODS
-    // ==========================================
+    
+    
+    
 
     public static Research4j createForSoftwareDevelopment(String geminiKey, String tavilyKey) throws ConfigurationException {
         return builder()
@@ -355,9 +355,9 @@ public class Research4j implements AutoCloseable {
             .build();
     }
 
-    // ==========================================
-    // UTILITY METHODS
-    // ==========================================
+    
+    
+    
 
     private String buildSystemInstruction(UserProfile userProfile, OutputFormat outputFormat) {
         StringBuilder instruction = new StringBuilder();
@@ -466,9 +466,9 @@ public class Research4j implements AutoCloseable {
         return query.length() > 100 ? query.substring(0, 100) + "..." : query;
     }
 
-    // ==========================================
-    // INFRASTRUCTURE METHODS
-    // ==========================================
+    
+    
+    
 
     private LLMClient createLLMClient() throws ConfigurationException, LLMClientException {
         if (config.hasApiKey(ModelType.GEMINI)) {
@@ -520,9 +520,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // HEALTH AND MONITORING
-    // ==========================================
+    
+    
+    
 
     public Research4jConfig getConfig() {
         return config;
@@ -540,9 +540,9 @@ public class Research4j implements AutoCloseable {
                 return false;
             }
 
-            // Check deep research engine health
+            
             if (deepResearchEngine != null) {
-                // Health check would be implemented in the engine
+                
                 return true;
             }
 
@@ -556,9 +556,9 @@ public class Research4j implements AutoCloseable {
 
     public ResearchCapabilities getCapabilities() {
         return new ResearchCapabilities(
-            true, // standard research
-            true, // deep research
-            deepResearchEnabled, // deep research enabled
+            true, 
+            true, 
+            deepResearchEnabled, 
             config.hasApiKey(ModelType.GEMINI),
             config.hasApiKey(ModelType.OPENAI),
             config.getDefaultCitationSource()
@@ -586,9 +586,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // BUILDER PATTERN
-    // ==========================================
+    
+    
+    
 
     public static Builder builder() {
         return new Builder();
@@ -680,9 +680,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // SUPPORTING CLASSES
-    // ==========================================
+    
+    
+    
 
     public static class ResearchCapabilities {
         private final boolean standardResearch;
@@ -714,22 +714,22 @@ public class Research4j implements AutoCloseable {
         public ResearchQualityReport validateComprehensiveQuality(DeepResearchResult result) {
             ResearchQualityReport report = new ResearchQualityReport();
 
-            // Validate narrative length and depth
+            
             report.addCheck("narrative_length",
                 result.getNarrative().length() >= 3000,
                 "Report length: " + result.getNarrative().length() + " characters");
 
-            // Validate citation coverage
+            
             report.addCheck("citation_coverage",
                 result.getResults().getAllCitations().size() >= 15,
                 "Citations: " + result.getResults().getAllCitations().size() + " sources");
 
-            // Check for specific examples and details
+            
             report.addCheck("specificity",
                 hasSpecificExamples(result.getNarrative()),
                 "Contains specific examples and implementation details");
 
-            // Verify logical connections
+            
             report.addCheck("coherence",
                 hasLogicalFlow(result.getNarrative()),
                 "Logical flow and narrative coherence");
@@ -802,9 +802,9 @@ public class Research4j implements AutoCloseable {
         }
     }
 
-    // ==========================================
-    // FACTORY METHODS (PRESERVED)
-    // ==========================================
+    
+    
+    
 
     public static Research4j createDefault() throws ConfigurationException {
         return builder().build();

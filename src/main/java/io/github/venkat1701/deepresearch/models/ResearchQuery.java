@@ -20,7 +20,7 @@ public class ResearchQuery {
         this.parameters = new HashMap<>();
     }
 
-    // Getters
+    
     public String getQuery() { return query; }
     public String getType() { return type; }
     public String getPriority() { return priority; }
@@ -28,7 +28,7 @@ public class ResearchQuery {
     public String getRationale() { return rationale; }
     public Map<String, Object> getParameters() { return new HashMap<>(parameters); }
 
-    // Setters
+    
     public void setQuery(String query) { this.query = query; }
     public void setType(String type) { this.type = type; }
     public void setPriority(String priority) { this.priority = priority; }

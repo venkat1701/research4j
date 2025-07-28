@@ -26,13 +26,13 @@ public class ResearchSupervisor {
 
     private static final Logger logger = Logger.getLogger(ResearchSupervisor.class.getName());
 
-    // Research Configuration - Based on real Deep Research implementations
-    private static final int MAX_PARALLEL_SEARCHES = 8; // Parallel search limit
-    private static final int MAX_RESEARCH_ITERATIONS = 5; // Maximum research depth iterations
-    private static final int CONTEXT_WINDOW_LIMIT = 32000; // Conservative context management
-    private static final int SEARCH_RESULT_LIMIT = 15; // Max results per search query
-    private static final long SEARCH_RATE_LIMIT_MS = 500; // Rate limiting between searches
-    private static final long DEEP_SEARCH_RATE_LIMIT_MS = 1000; // Longer delay for deep searches
+    
+    private static final int MAX_PARALLEL_SEARCHES = 8; 
+    private static final int MAX_RESEARCH_ITERATIONS = 5; 
+    private static final int CONTEXT_WINDOW_LIMIT = 32000; 
+    private static final int SEARCH_RESULT_LIMIT = 15; 
+    private static final long SEARCH_RATE_LIMIT_MS = 500; 
+    private static final long DEEP_SEARCH_RATE_LIMIT_MS = 1000; 
 
     private final LLMClient llmClient;
     private final CitationService citationService;
@@ -67,22 +67,22 @@ public class ResearchSupervisor {
                 logger.info("Executing comprehensive research for: " +
                     truncateString(question.getQuestion(), 80));
 
-                // Phase 1: Multi-dimensional query generation
+                
                 List<ResearchQuery> researchQueries = generateMultiDimensionalQueries(
                     question, isolatedContext, config);
 
-                // Phase 2: Parallel search execution with rate limiting
+                
                 List<CitationResult> initialResults = executeParallelSearches(researchQueries);
 
-                // Phase 3: Iterative research refinement
+                
                 List<CitationResult> refinedResults = executeIterativeRefinement(
                     initialResults, question, isolatedContext, config);
 
-                // Phase 4: Quality filtering and ranking
+                
                 List<CitationResult> qualityResults = qualityAnalyzer.filterAndRankResults(
                     refinedResults, question, config);
 
-                // Phase 5: Context-aware result enhancement
+                
                 List<CitationResult> enhancedResults = enhanceResultsWithContext(
                     qualityResults, question, globalContext);
 
@@ -112,26 +112,26 @@ public class ResearchSupervisor {
                 logger.info("Executing deep dive research for: " +
                     truncateString(question.getQuestion(), 80));
 
-                // Phase 1: Advanced query strategy generation
+                
                 List<ResearchQuery> deepQueries = generateDeepDiveQueries(
                     question, context, exploredTopics);
 
-                // Phase 2: Multi-step research execution
+                
                 List<CitationResult> deepResults = executeMultiStepResearch(deepQueries, context);
 
-                // Phase 3: Cross-reference validation
+                
                 List<CitationResult> validatedResults = validateCrossReferences(
                     deepResults, question, context);
 
-                // Phase 4: Semantic clustering and gap analysis
+                
                 Map<String, List<CitationResult>> clusteredResults = clusterResultsBySemantics(
                     validatedResults, question);
 
-                // Phase 5: Gap identification and targeted search
+                
                 List<CitationResult> gapFillingResults = identifyAndFillResearchGaps(
                     clusteredResults, question, context);
 
-                // Phase 6: Final synthesis and ranking
+                
                 List<CitationResult> synthesizedResults = synthesizeDeepResults(
                     validatedResults, gapFillingResults, question);
 
@@ -156,7 +156,7 @@ public class ResearchSupervisor {
         try {
             String queryGenerationPrompt = buildQueryGenerationPrompt(question, isolatedContext, config);
 
-            // Use chunked approach for complex context
+            
             List<String> promptChunks = chunkPromptForContext(queryGenerationPrompt);
             List<ResearchQuery> allQueries = new ArrayList<>();
 
@@ -166,7 +166,7 @@ public class ResearchSupervisor {
                 allQueries.addAll(chunkQueries);
             }
 
-            // Deduplicate and prioritize queries
+            
             return prioritizeAndDeduplicateQueries(allQueries, config);
 
         } catch (Exception e) {
@@ -221,20 +221,20 @@ public class ResearchSupervisor {
      */
     private List<CitationResult> executeParallelSearches(List<ResearchQuery> queries) {
         try {
-            // Group queries by priority for optimized execution
+            
             Map<String, List<ResearchQuery>> prioritizedQueries = queries.stream()
                 .collect(Collectors.groupingBy(ResearchQuery::getPriority));
 
             List<CompletableFuture<List<CitationResult>>> searchFutures = new ArrayList<>();
 
-            // Execute high-priority queries first
+            
             if (prioritizedQueries.containsKey("High")) {
                 for (ResearchQuery query : prioritizedQueries.get("High")) {
                     searchFutures.add(executeRateLimitedSearch(query, SEARCH_RATE_LIMIT_MS));
                 }
             }
 
-            // Execute medium and low priority queries in parallel
+            
             for (String priority : Arrays.asList("Medium", "Low")) {
                 if (prioritizedQueries.containsKey(priority)) {
                     for (ResearchQuery query : prioritizedQueries.get(priority)) {
@@ -243,7 +243,7 @@ public class ResearchSupervisor {
                 }
             }
 
-            // Collect all results
+            
             List<CitationResult> allResults = searchFutures.stream()
                 .map(CompletableFuture::join)
                 .flatMap(List::stream)
@@ -265,13 +265,13 @@ public class ResearchSupervisor {
         long rateLimitMs) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Apply rate limiting
+                
                 Thread.sleep(rateLimitMs);
 
-                // Execute search with retry logic
+                
                 List<CitationResult> results = executeSearchWithRetry(query);
 
-                // Apply quality filtering
+                
                 return results.stream()
                     .filter(result -> result.getRelevanceScore() >= 0.4)
                     .filter(result -> result.getContent() != null &&
@@ -299,7 +299,7 @@ public class ResearchSupervisor {
             for (int iteration = 0; iteration < MAX_RESEARCH_ITERATIONS; iteration++) {
                 logger.info("Research refinement iteration " + (iteration + 1));
 
-                // Analyze current results for gaps
+                
                 ResearchGapAnalysis gapAnalysis = analyzeResearchGaps(currentResults, question);
 
                 if (gapAnalysis.getGaps().isEmpty()) {
@@ -307,17 +307,17 @@ public class ResearchSupervisor {
                     break;
                 }
 
-                // Generate targeted queries for identified gaps
+                
                 List<ResearchQuery> refinementQueries = generateGapFillingQueries(
                     gapAnalysis, question, isolatedContext);
 
-                // Execute refinement searches
+                
                 List<CitationResult> refinementResults = executeParallelSearches(refinementQueries);
 
-                // Merge and deduplicate results
+                
                 currentResults = mergeAndDeduplicateResults(currentResults, refinementResults);
 
-                // Check if sufficient quality achieved
+                
                 if (qualityAnalyzer.isResearchSufficient(currentResults, question, config)) {
                     logger.info("Research quality threshold achieved at iteration " + (iteration + 1));
                     break;
@@ -332,7 +332,7 @@ public class ResearchSupervisor {
         }
     }
 
-    // Helper Methods and Utilities
+    
 
     private String truncateString(String str, int maxLength) {
         if (str == null || str.length() <= maxLength) {
@@ -346,9 +346,9 @@ public class ResearchSupervisor {
             return List.of(prompt);
         }
 
-        // Simple chunking strategy
+        
         List<String> chunks = new ArrayList<>();
-        int chunkSize = CONTEXT_WINDOW_LIMIT * 4; // Approximate character count
+        int chunkSize = CONTEXT_WINDOW_LIMIT * 4; 
 
         for (int i = 0; i < prompt.length(); i += chunkSize) {
             int end = Math.min(i + chunkSize, prompt.length());
@@ -362,9 +362,9 @@ public class ResearchSupervisor {
         return text != null ? (int) Math.ceil(text.length() / 4.0) : 0;
     }
 
-    // Placeholder implementations for remaining methods
+    
     private List<ResearchQuery> parseResearchQueries(String response, ResearchQuestion question) {
-        // Parse LLM response into ResearchQuery objects
+        
         return new ArrayList<>();
     }
 
@@ -391,7 +391,7 @@ public class ResearchSupervisor {
         }
     }
 
-    // Additional method implementations would continue here...
+    
     private ResearchGapAnalysis analyzeResearchGaps(List<CitationResult> results, ResearchQuestion question) {
         return new ResearchGapAnalysis(new ArrayList<>(), new HashMap<>());
     }

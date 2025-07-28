@@ -30,13 +30,13 @@ public class DeepResearchEngine {
 
     private static final Logger logger = Logger.getLogger(DeepResearchEngine.class.getName());
 
-    // Core Research Configuration
+    
     private static final int MAX_RESEARCH_ROUNDS = 3;
     private static final int MAX_QUESTIONS_PER_ROUND = 12;
     private static final int TARGET_NARRATIVE_WORDS = 8000;
     private static final long SESSION_TIMEOUT_MINUTES = 45;
 
-    // Component Dependencies
+    
     private final LLMClient llmClient;
     private final CitationService citationService;
     private final ResearchSupervisor researchSupervisor;
@@ -46,7 +46,7 @@ public class DeepResearchEngine {
     private final ExecutorService mainExecutor;
     private final ScheduledExecutorService scheduledExecutor;
 
-    // Research State Management
+    
     private final Map<String, DeepResearchSession> activeSessions;
     private final ResearchMetricsCollector metricsCollector;
 
@@ -55,21 +55,21 @@ public class DeepResearchEngine {
         this.llmClient = llmClient;
         this.citationService = citationService;
 
-        // Initialize thread pools
+        
         this.mainExecutor = Executors.newFixedThreadPool(8);
         this.scheduledExecutor = Executors.newScheduledThreadPool(4);
 
-        // Initialize core components
+        
         this.hierarchicalSynthesizer = new HierarchicalSynthesizer(llmClient);
         this.contextChunker = new ContextAwareChunker(32000);
         this.narrativeBuilder = new NarrativeBuilder(llmClient, hierarchicalSynthesizer, mainExecutor);
         this.researchSupervisor = new ResearchSupervisor(llmClient, citationService, mainExecutor);
 
-        // Initialize state management
+        
         this.activeSessions = new ConcurrentHashMap<>();
         this.metricsCollector = new ResearchMetricsCollector();
 
-        // Schedule session cleanup
+        
         scheduleSessionCleanup();
 
         logger.info("DeepResearchEngine initialized successfully");
@@ -88,25 +88,25 @@ public class DeepResearchEngine {
             try {
                 logger.info("Starting Deep Research session: " + sessionId + " for query: " + originalQuery);
 
-                // Phase 1: Initialize research context
+                
                 DeepResearchContext context = initializeResearchContext(sessionId, originalQuery, config);
                 activeSessions.put(sessionId, new DeepResearchSession(context, startTime));
 
-                // Phase 2: Multi-round research execution
+                
                 ResearchResults comprehensiveResults = executeMultiRoundResearch(context);
 
-                // Phase 3: Knowledge synthesis and integration
+                
                 String synthesizedKnowledge = synthesizeComprehensiveKnowledge(comprehensiveResults, context);
 
-                // Phase 4: Long-form narrative construction
+                
                 String comprehensiveNarrative = narrativeBuilder.buildComprehensiveNarrative(
                     context, synthesizedKnowledge);
 
-                // Phase 5: Final quality enhancement and validation
+                
                 DeepResearchResult finalResult = enhanceAndValidateResult(
                     comprehensiveNarrative, comprehensiveResults, context);
 
-                // Record metrics and cleanup
+                
                 Duration totalDuration = Duration.between(startTime, Instant.now());
                 metricsCollector.recordSession(sessionId, totalDuration, finalResult);
                 activeSessions.remove(sessionId);
@@ -139,33 +139,33 @@ public class DeepResearchEngine {
             logger.info("Research Round " + round + " - generating questions and executing searches");
 
             try {
-                // Generate research questions for this round
+                
                 List<ResearchQuestion> roundQuestions = generateResearchQuestions(
                     context, exploredTopics, round);
 
-                // Execute parallel research for all questions
+                
                 List<CompletableFuture<List<CitationResult>>> searchFutures = roundQuestions.stream()
                     .map(question -> executeQuestionResearch(question, context, exploredTopics))
                     .collect(Collectors.toList());
 
-                // Collect and process results
+                
                 List<List<CitationResult>> roundResults = searchFutures.stream()
                     .map(CompletableFuture::join)
                     .collect(Collectors.toList());
 
-                // Synthesize insights from this round
+                
                 Map<String, String> roundInsights = synthesizeRoundInsights(
                     roundQuestions, roundResults, context);
 
-                // Accumulate results
+                
                 roundResults.forEach(allCitations::addAll);
                 consolidatedInsights.putAll(roundInsights);
                 exploredTopics.addAll(extractTopicsFromResults(roundResults));
 
-                // Update context with new findings
+                
                 updateContextWithFindings(context, roundInsights, roundResults);
 
-                // Assess if additional rounds are needed
+                
                 if (isResearchSufficient(context, round)) {
                     logger.info("Research deemed sufficient after round " + round);
                     break;
@@ -176,7 +176,7 @@ public class DeepResearchEngine {
             }
         }
 
-        // Create categorized results
+        
         Map<String, List<CitationResult>> categorizedResults = categorizeCitations(allCitations);
 
         return new ResearchResults(allCitations, categorizedResults, consolidatedInsights);
@@ -190,7 +190,7 @@ public class DeepResearchEngine {
         Set<String> exploredTopics) {
         return CompletableFuture.supplyAsync(() -> {
             try {
-                // Determine research strategy based on question complexity
+                
                 if (isComplexQuestion(question)) {
                     return researchSupervisor.executeDeepDiveResearch(
                         question, context, exploredTopics).join();
@@ -215,10 +215,10 @@ public class DeepResearchEngine {
             logger.info("Synthesizing comprehensive knowledge from " +
                 results.getAllCitations().size() + " sources");
 
-            // Group insights by thematic categories
+            
             Map<String, List<String>> thematicInsights = groupInsightsByTheme(results.getInsights());
 
-            // Apply hierarchical synthesis across themes
+            
             Map<String, String> synthesizedThemes = new HashMap<>();
             for (Map.Entry<String, List<String>> themeEntry : thematicInsights.entrySet()) {
                 String themeKey = themeEntry.getKey();
@@ -229,7 +229,7 @@ public class DeepResearchEngine {
                 synthesizedThemes.put(themeKey, themeSynthesis);
             }
 
-            // Cross-theme synthesis for comprehensive knowledge
+            
             return hierarchicalSynthesizer.synthesizeHierarchically(synthesizedThemes, context);
 
         } catch (Exception e) {
@@ -247,7 +247,7 @@ public class DeepResearchEngine {
         try {
             String questionPrompt = buildQuestionGenerationPrompt(context, exploredTopics, round);
 
-            // Use context-aware chunking for complex prompts
+            
             List<ContextAwareChunker.ContextChunk> promptChunks = contextChunker.chunkPrompt(questionPrompt);
             List<ResearchQuestion> allQuestions = new ArrayList<>();
 
@@ -258,7 +258,7 @@ public class DeepResearchEngine {
                 allQuestions.addAll(chunkQuestions);
             }
 
-            // Prioritize and limit questions for this round
+            
             return prioritizeQuestions(allQuestions, round);
 
         } catch (Exception e) {
@@ -396,22 +396,22 @@ public class DeepResearchEngine {
         ResearchResults results,
         DeepResearchContext context) {
         try {
-            // Validate narrative completeness and quality
+            
             NarrativeQualityMetrics qualityMetrics = assessNarrativeQuality(narrative, context);
 
-            // Apply final enhancements if needed
+            
             String enhancedNarrative = narrative;
             if (qualityMetrics.needsEnhancement()) {
                 enhancedNarrative = applyFinalNarrativeEnhancements(narrative, context, qualityMetrics);
             }
 
-            // Generate executive summary
+            
             String executiveSummary = generateExecutiveSummary(enhancedNarrative, results, context);
 
-            // Create research methodology documentation
+            
             String methodology = documentResearchMethodology(context, results);
 
-            // Compile final result
+            
             return new DeepResearchResult(
                 context.getSessionId(),
                 context.getOriginalQuery(),
@@ -429,7 +429,7 @@ public class DeepResearchEngine {
         }
     }
 
-    // Helper Methods and Utilities
+    
 
     private DeepResearchContext initializeResearchContext(String sessionId, String query, DeepResearchConfig config) {
         return new DeepResearchContext(sessionId, query, config);
@@ -490,7 +490,7 @@ public class DeepResearchEngine {
         StringBuilder fallback = new StringBuilder();
         fallback.append("Research Summary for: ").append(context.getOriginalQuery()).append("\n\n");
 
-        // Add insights
+        
         for (Map.Entry<String, String> insight : results.getInsights().entrySet()) {
             fallback.append("• ").append(insight.getValue()).append("\n");
         }
@@ -529,7 +529,7 @@ public class DeepResearchEngine {
     private List<ResearchQuestion> prioritizeQuestions(List<ResearchQuestion> questions, int round) {
         return questions.stream()
             .sorted((q1, q2) -> {
-                // Compare by priority enum values
+                
                 return Integer.compare(q2.getPriority().ordinal(), q1.getPriority().ordinal());
             })
             .limit(MAX_QUESTIONS_PER_ROUND)
@@ -568,7 +568,7 @@ public class DeepResearchEngine {
 
         for (List<CitationResult> results : roundResults) {
             for (CitationResult result : results) {
-                // Extract key topics from titles and content
+                
                 String[] titleWords = result.getTitle().toLowerCase().split("\\W+");
                 for (String word : titleWords) {
                     if (word.length() > 4) {
@@ -584,12 +584,12 @@ public class DeepResearchEngine {
     private void updateContextWithFindings(DeepResearchContext context,
         Map<String, String> insights,
         List<List<CitationResult>> results) {
-        // Update context with new insights
+        
         for (Map.Entry<String, String> insight : insights.entrySet()) {
             context.addInsight(insight.getKey(), insight.getValue());
         }
 
-        // Add new citations
+        
         for (List<CitationResult> resultList : results) {
             for (CitationResult result : resultList) {
                 context.addCitation(result);
@@ -721,7 +721,7 @@ public class DeepResearchEngine {
             methodology.append("- **Narrative Construction**: Long-form comprehensive documentation\n");
             methodology.append("- **Final Enhancement**: Quality metrics assessment and improvement\n\n");
 
-            // Add source categorization breakdown
+            
             Map<String, List<CitationResult>> categorized = results.getCategorizedResults();
             if (!categorized.isEmpty()) {
                 methodology.append("## Source Distribution\n");
@@ -835,14 +835,14 @@ public class DeepResearchEngine {
         return str.substring(0, maxLength - 3) + "...";
     }
 
-    // Placeholder implementations for remaining methods - simplified to avoid dependency issues
+    
     private NarrativeQualityMetrics assessNarrativeQuality(String narrative, DeepResearchContext context) {
         int wordCount = narrative != null ? narrative.split("\\s+").length : 0;
         return new NarrativeQualityMetrics(narrative.length(), wordCount, true);
     }
 
     private String applyFinalNarrativeEnhancements(String narrative, DeepResearchContext context, NarrativeQualityMetrics metrics) {
-        return narrative; // Return as-is for now
+        return narrative; 
     }
 
     private DeepResearchResult createBasicResult(String narrative, ResearchResults results, DeepResearchContext context) {
@@ -906,7 +906,7 @@ public class DeepResearchEngine {
         }
     }
 
-    // Inner classes for session and metrics management
+    
     private static class DeepResearchSession {
         private final DeepResearchContext context;
         private final Instant startTime;

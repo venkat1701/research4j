@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ResearchGapAnalysis {
+
     private final List<String> gaps;
     private final Map<String, Double> coverageScores;
     private final List<String> recommendations;
@@ -27,15 +28,30 @@ public class ResearchGapAnalysis {
     }
 
     private double calculateOverallCoverage() {
-        return coverageScores.values().stream()
+        return coverageScores.values()
+            .stream()
             .mapToDouble(Double::doubleValue)
             .average()
             .orElse(0.0);
     }
 
-    public List<String> getGaps() { return new ArrayList<>(gaps); }
-    public Map<String, Double> getCoverageScores() { return new HashMap<>(coverageScores); }
-    public List<String> getRecommendations() { return new ArrayList<>(recommendations); }
-    public double getOverallCoverageScore() { return overallCoverageScore; }
-    public boolean hasGaps() { return !gaps.isEmpty(); }
+    public List<String> getGaps() {
+        return new ArrayList<>(gaps);
+    }
+
+    public Map<String, Double> getCoverageScores() {
+        return new HashMap<>(coverageScores);
+    }
+
+    public List<String> getRecommendations() {
+        return new ArrayList<>(recommendations);
+    }
+
+    public double getOverallCoverageScore() {
+        return overallCoverageScore;
+    }
+
+    public boolean hasGaps() {
+        return !gaps.isEmpty();
+    }
 }

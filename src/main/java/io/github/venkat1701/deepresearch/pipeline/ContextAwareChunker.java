@@ -32,7 +32,7 @@ public class ContextAwareChunker {
             return chunks;
         }
 
-        // Determine optimal chunk size based on content and structure
+        
         int optimalChunkSize = calculateOptimalChunkSize(content, structure);
         int overlapSize = (int) (optimalChunkSize * CHUNK_OVERLAP_RATIO);
 
@@ -43,12 +43,12 @@ public class ContextAwareChunker {
 
         for (String paragraph : paragraphs) {
             if (currentSize + paragraph.length() > optimalChunkSize && currentSize > 0) {
-                // Create chunk with current content
+                
                 String theme = determineChunkTheme(currentChunk.toString());
                 chunks.add(new ContentChunk(currentChunk.toString(), theme,
                     chunkIndex * optimalChunkSize, chunkIndex * optimalChunkSize + currentSize));
 
-                // Start new chunk with overlap
+                
                 String overlap = extractOverlap(currentChunk.toString(), overlapSize);
                 currentChunk = new StringBuilder(overlap);
                 currentSize = overlap.length();
@@ -59,7 +59,7 @@ public class ContextAwareChunker {
             currentSize += paragraph.length() + 2;
         }
 
-        // Add final chunk
+        
         if (currentSize > 0) {
             String theme = determineChunkTheme(currentChunk.toString());
             chunks.add(new ContentChunk(currentChunk.toString(), theme,
@@ -81,8 +81,8 @@ public class ContextAwareChunker {
             return chunks;
         }
 
-        // Split into manageable chunks with overlap
-        int chunkSize = contextLimit - 500; // Leave room for response
+        
+        int chunkSize = contextLimit - 500; 
         String[] sentences = prompt.split("\\. ");
 
         StringBuilder currentChunk = new StringBuilder();
@@ -94,7 +94,7 @@ public class ContextAwareChunker {
             if (currentTokens + sentenceTokens > chunkSize && currentTokens > 0) {
                 chunks.add(new ContextChunk(currentChunk.toString(), currentTokens));
 
-                // Start new chunk with some overlap
+                
                 currentChunk = new StringBuilder();
                 currentTokens = 0;
             }
@@ -117,7 +117,7 @@ public class ContextAwareChunker {
     public List<ContextChunk> chunkNarrative(String narrative) {
         List<ContextChunk> chunks = new ArrayList<>();
 
-        // Split narrative into sections for coherence enhancement
+        
         String[] sections = narrative.split("(?=##\\s)");
 
         for (String section : sections) {
@@ -138,13 +138,13 @@ public class ContextAwareChunker {
             return prompt;
         }
 
-        // Simple compression by truncating to target size
-        int targetChars = targetTokens * 4; // Approximate
+        
+        int targetChars = targetTokens * 4; 
         if (prompt.length() <= targetChars) {
             return prompt;
         }
 
-        // Find good break point
+        
         int breakPoint = findSentenceBreak(prompt, targetChars);
         return prompt.substring(0, breakPoint) + "...";
     }
@@ -153,17 +153,17 @@ public class ContextAwareChunker {
      * Calculate optimal chunk size based on content complexity
      */
     private int calculateOptimalChunkSize(String content, NarrativeStructure structure) {
-        int baseChunkSize = 2000; // Base chunk size in characters
+        int baseChunkSize = 2000; 
 
-        // Adjust based on content complexity
+        
         if (content.contains("```") || content.contains("http")) {
-            baseChunkSize += 500; // More space for code/links
+            baseChunkSize += 500; 
         }
 
-        // Adjust based on structure complexity
+        
         int sectionCount = structure.getSections().size();
         if (sectionCount > 6) {
-            baseChunkSize -= 200; // Smaller chunks for complex structures
+            baseChunkSize -= 200; 
         }
 
         return Math.max(1000, Math.min(baseChunkSize, 3000));
@@ -202,7 +202,7 @@ public class ContextAwareChunker {
             return content;
         }
 
-        // Extract from end, looking for sentence boundaries
+        
         String suffix = content.substring(Math.max(0, content.length() - overlapSize * 2));
         int lastSentence = suffix.lastIndexOf(". ");
 
