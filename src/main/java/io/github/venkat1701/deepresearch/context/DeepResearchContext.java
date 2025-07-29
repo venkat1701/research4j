@@ -8,10 +8,7 @@ import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.deepresearch.models.DeepResearchConfig;
 import io.github.venkat1701.deepresearch.models.ResearchQuestion;
 
-/**
- * Deep Research Context - Manages the complete context for a research session
- * Tracks citations, insights, questions, and configuration throughout the research process
- */
+
 public class DeepResearchContext {
 
     private final String sessionId;

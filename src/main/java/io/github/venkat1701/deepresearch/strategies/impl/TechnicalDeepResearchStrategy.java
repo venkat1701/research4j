@@ -2,7 +2,6 @@ package io.github.venkat1701.deepresearch.strategies.impl;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -29,11 +28,9 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
     private final MemoryManager memoryManager;
     private final RobustLLMResponseHandler responseHandler;
 
-    private static final Set<String> TECHNICAL_KEYWORDS = Set.of(
-        "implementation", "architecture", "design", "pattern", "framework", "library", "api", "code",
-        "programming", "development", "software", "algorithm", "performance", "scalability", "security",
-        "testing", "deployment", "configuration", "integration", "microservices", "database"
-    );
+    private static final Set<String> TECHNICAL_KEYWORDS = Set.of("implementation", "architecture", "design", "pattern", "framework", "library", "api", "code",
+        "programming", "development", "software", "algorithm", "performance", "scalability", "security", "testing", "deployment", "configuration",
+        "integration", "microservices", "database");
 
     public TechnicalDeepResearchStrategy(LLMClient llmClient, CitationService citationService, MemoryManager memoryManager) {
         this.llmClient = llmClient;
@@ -48,10 +45,8 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
     }
 
     @Override
-    public List<CitationResult> enhanceCitations(
-        List<CitationResult> citations,
-        ResearchQuestion question,
-        DeepResearchContext context) throws Research4jException {
+    public List<CitationResult> enhanceCitations(List<CitationResult> citations, ResearchQuestion question, DeepResearchContext context)
+        throws Research4jException {
 
         logger.info("Enhancing citations for technical research: " + question.getCategory());
 
@@ -99,10 +94,7 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
     }
 
     @Override
-    public String generateInsights(
-        ResearchQuestion question,
-        List<CitationResult> citations,
-        DeepResearchContext context) throws Research4jException {
+    public String generateInsights(ResearchQuestion question, List<CitationResult> citations, DeepResearchContext context) throws Research4jException {
 
         logger.info("Generating technical insights for: " + question.getQuestion());
 
@@ -110,11 +102,11 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
             String insightPrompt = buildSafeTechnicalInsightPrompt(question, citations, context);
             String contextInfo = "TechnicalInsights-" + question.getCategory();
 
-
             LLMResponse<String> response = responseHandler.safeComplete(insightPrompt, String.class, contextInfo);
 
             String insights = response.structuredOutput();
-            if (insights == null || insights.trim().isEmpty()) {
+            if (insights == null || insights.trim()
+                .isEmpty()) {
                 logger.warning("Empty insights received, using fallback");
                 return generateTechnicalFallbackInsights(question, citations);
             }
@@ -133,11 +125,17 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
 
         prompt.append("You are a senior software architect analyzing technical implementation questions.\n\n");
 
-        prompt.append("TECHNICAL QUESTION: ").append(question.getQuestion()).append("\n\n");
+        prompt.append("TECHNICAL QUESTION: ")
+            .append(question.getQuestion())
+            .append("\n\n");
 
         prompt.append("ANALYSIS CONTEXT:\n");
-        prompt.append("- Question Category: ").append(question.getCategory()).append("\n");
-        prompt.append("- Priority Level: ").append(question.getPriority()).append("\n");
+        prompt.append("- Question Category: ")
+            .append(question.getCategory())
+            .append("\n");
+        prompt.append("- Priority Level: ")
+            .append(question.getPriority())
+            .append("\n");
         prompt.append("- Focus Area: Software Architecture and Implementation\n\n");
 
         if (!citations.isEmpty()) {
@@ -147,11 +145,17 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
                 try {
                     CitationResult citation = citations.get(i);
                     if (citation != null && citation.isValid()) {
-                        prompt.append("Source ").append(i + 1).append(": ")
+                        prompt.append("Source ")
+                            .append(i + 1)
+                            .append(": ")
                             .append(citation.getTitle() != null ? citation.getTitle() : "Technical Resource")
                             .append("\n");
-                        prompt.append("Relevance: ").append(String.format("%.2f", citation.getRelevanceScore())).append("\n");
-                        prompt.append("Content Summary: ").append(truncate(citation.getContent(), 300)).append("\n\n");
+                        prompt.append("Relevance: ")
+                            .append(String.format("%.2f", citation.getRelevanceScore()))
+                            .append("\n");
+                        prompt.append("Content Summary: ")
+                            .append(truncate(citation.getContent(), 300))
+                            .append("\n\n");
                     }
                 } catch (Exception e) {
                     logger.warning("Error processing citation " + i + ": " + e.getMessage());
@@ -200,12 +204,14 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
 
         try {
             String synthesisPrompt = buildSafeSynthesisPrompt(context);
-            String contextInfo = "TechnicalSynthesis-" + context.getOriginalQuery().hashCode();
+            String contextInfo = "TechnicalSynthesis-" + context.getOriginalQuery()
+                .hashCode();
 
             LLMResponse<String> response = responseHandler.safeComplete(synthesisPrompt, String.class, contextInfo);
 
             String synthesis = response.structuredOutput();
-            if (synthesis == null || synthesis.trim().isEmpty()) {
+            if (synthesis == null || synthesis.trim()
+                .isEmpty()) {
                 logger.warning("Empty synthesis received, using fallback");
                 return generateTechnicalFallbackSynthesis(context);
             }
@@ -229,7 +235,8 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
             LLMResponse<String> response = responseHandler.safeComplete(reportPrompt, String.class, contextInfo);
 
             String report = response.structuredOutput();
-            if (report == null || report.trim().isEmpty()) {
+            if (report == null || report.trim()
+                .isEmpty()) {
                 logger.warning("Empty report received, using fallback");
                 return generateTechnicalFallbackReport(context, synthesizedKnowledge);
             }
@@ -246,11 +253,19 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         StringBuilder prompt = new StringBuilder();
 
         prompt.append("Synthesize technical research findings into a comprehensive overview.\n\n");
-        prompt.append("RESEARCH TOPIC: ").append(context.getOriginalQuery()).append("\n\n");
+        prompt.append("RESEARCH TOPIC: ")
+            .append(context.getOriginalQuery())
+            .append("\n\n");
 
         prompt.append("RESEARCH SUMMARY:\n");
-        prompt.append("- Questions Analyzed: ").append(context.getResearchQuestions().size()).append("\n");
-        prompt.append("- Sources Reviewed: ").append(context.getAllCitations().size()).append("\n");
+        prompt.append("- Questions Analyzed: ")
+            .append(context.getResearchQuestions()
+                .size())
+            .append("\n");
+        prompt.append("- Sources Reviewed: ")
+            .append(context.getAllCitations()
+                .size())
+            .append("\n");
         prompt.append("- Research Focus: Technical Implementation\n\n");
 
         prompt.append("Create a synthesis covering:\n");
@@ -267,8 +282,12 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         StringBuilder prompt = new StringBuilder();
 
         prompt.append("Create a comprehensive technical research report.\n\n");
-        prompt.append("RESEARCH TOPIC: ").append(context.getOriginalQuery()).append("\n\n");
-        prompt.append("SYNTHESIZED FINDINGS:\n").append(synthesizedKnowledge).append("\n\n");
+        prompt.append("RESEARCH TOPIC: ")
+            .append(context.getOriginalQuery())
+            .append("\n\n");
+        prompt.append("SYNTHESIZED FINDINGS:\n")
+            .append(synthesizedKnowledge)
+            .append("\n\n");
 
         prompt.append("Create a structured report with:\n");
         prompt.append("1. Executive Summary\n");
@@ -283,8 +302,12 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         StringBuilder insights = new StringBuilder();
 
         insights.append("## Technical Analysis\n\n");
-        insights.append("Analysis of: ").append(question.getQuestion()).append("\n");
-        insights.append("Based on ").append(citations.size()).append(" technical sources.\n\n");
+        insights.append("Analysis of: ")
+            .append(question.getQuestion())
+            .append("\n");
+        insights.append("Based on ")
+            .append(citations.size())
+            .append(" technical sources.\n\n");
 
         insights.append("## Key Findings\n");
         insights.append("- Multiple implementation approaches identified\n");
@@ -308,7 +331,9 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         StringBuilder synthesis = new StringBuilder();
 
         synthesis.append("## Technical Research Synthesis\n\n");
-        synthesis.append("Comprehensive analysis of: ").append(context.getOriginalQuery()).append("\n\n");
+        synthesis.append("Comprehensive analysis of: ")
+            .append(context.getOriginalQuery())
+            .append("\n\n");
 
         synthesis.append("## Research Overview\n");
         synthesis.append("- Technical focus on implementation and architecture\n");
@@ -327,13 +352,16 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         StringBuilder report = new StringBuilder();
 
         report.append("# Technical Research Report\n\n");
-        report.append("## Topic: ").append(context.getOriginalQuery()).append("\n\n");
+        report.append("## Topic: ")
+            .append(context.getOriginalQuery())
+            .append("\n\n");
 
         report.append("## Executive Summary\n");
         report.append("Comprehensive technical research conducted on the specified topic.\n\n");
 
         report.append("## Technical Analysis\n");
-        report.append(synthesizedKnowledge).append("\n\n");
+        report.append(synthesizedKnowledge)
+            .append("\n\n");
 
         report.append("## Conclusion\n");
         report.append("Research provides comprehensive technical guidance for implementation.\n");
@@ -341,9 +369,9 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         return report.toString();
     }
 
-
     private boolean hasValidContent(CitationResult citation) {
-        return citation.getContent() != null && citation.getContent().length() >= 50;
+        return citation.getContent() != null && citation.getContent()
+            .length() >= 50;
     }
 
     private double calculateTechnicalRelevance(CitationResult citation) {
@@ -359,7 +387,9 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
     }
 
     private String safeGetContent(CitationResult citation) {
-        if (citation == null) return "";
+        if (citation == null) {
+            return "";
+        }
         String title = citation.getTitle() != null ? citation.getTitle() : "";
         String content = citation.getContent() != null ? citation.getContent() : "";
         return title + " " + content;
@@ -367,16 +397,19 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
 
     private boolean isAuthoritativeTechnicalSource(CitationResult citation) {
         try {
-            String url = citation.getUrl() != null ? citation.getUrl().toLowerCase() : "";
-            return url.contains("docs.") || url.contains("github.com") || url.contains("spring.io") ||
-                url.contains("baeldung.com") || url.contains("stackoverflow.com");
+            String url = citation.getUrl() != null ? citation.getUrl()
+                .toLowerCase() : "";
+            return url.contains("docs.") || url.contains("github.com") || url.contains("spring.io") || url.contains("baeldung.com") ||
+                url.contains("stackoverflow.com");
         } catch (Exception e) {
             return false;
         }
     }
 
     private List<CitationResult> ensureImplementationCoverage(List<CitationResult> citations, ResearchQuestion question) {
-        return citations.stream().limit(10).collect(Collectors.toList());
+        return citations.stream()
+            .limit(10)
+            .collect(Collectors.toList());
     }
 
     private String truncate(String text, int maxLength) {
@@ -386,7 +419,6 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
         return text.substring(0, maxLength - 3) + "...";
     }
 
-
     @Override
     public List<String> identifyCriticalAreas(DeepResearchContext context) {
         return List.of("implementation architecture", "performance optimization", "security considerations");
@@ -394,8 +426,7 @@ public class TechnicalDeepResearchStrategy implements DeepResearchStrategy {
 
     @Override
     public List<ResearchQuestion> generateDeepQuestions(String area, DeepResearchContext context) throws Research4jException {
-        return List.of(new ResearchQuestion(
-            "What are the technical implementation details for " + area + " with " + context.getOriginalQuery() + "?",
+        return List.of(new ResearchQuestion("What are the technical implementation details for " + area + " with " + context.getOriginalQuery() + "?",
             ResearchQuestion.Priority.MEDIUM, "technical"));
     }
 

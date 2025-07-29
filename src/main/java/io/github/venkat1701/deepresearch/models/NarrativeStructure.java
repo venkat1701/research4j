@@ -3,14 +3,9 @@ package io.github.venkat1701.deepresearch.models;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Supporting Classes for Deep Research System
- * Contains data models, utilities, and helper classes
- */
 
-/**
- * Narrative Structure - Represents the hierarchical structure of a research narrative
- */
+
+
 public class NarrativeStructure {
 
     private final List<NarrativeSection> sections;
