@@ -1,6 +1,8 @@
 package io.github.venkat1701.citation;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 public class CitationResult {
 
@@ -13,6 +15,7 @@ public class CitationResult {
     private String language;
     private String domain;
     private int wordCount;
+    private Map<String, Object> metadata = new HashMap<>();
 
     public CitationResult() {
         this.retrievedAt = LocalDateTime.now();
@@ -33,6 +36,25 @@ public class CitationResult {
     public CitationResult(String title, String snippet, String content, String url, double relevanceScore) {
         this(title, snippet, content, url);
         this.relevanceScore = relevanceScore;
+    }
+
+    public void addMetadata(String key, Object value) {
+        if (this.metadata == null) {
+            this.metadata = new HashMap<>();
+        }
+        this.metadata.put(key, value);
+    }
+
+    public void setMetadata(String key, Object value) {
+        addMetadata(key, value);
+    }
+
+    public Map<String, Object> getMetadata() {
+        return metadata != null ? new HashMap<>(metadata) : new HashMap<>();
+    }
+
+    public Object getMetadata(String key) {
+        return metadata != null ? metadata.get(key) : null;
     }
 
     public static Builder builder() {
@@ -192,5 +214,12 @@ public class CitationResult {
 
     public boolean isHighRelevance() {
         return relevanceScore >= 0.7;
+    }
+
+    @Override
+    public String toString() {
+        return "CitationResult{" + "title='" + title + '\'' + ", snippet='" + snippet + '\'' + ", content='" + content + '\'' + ", url='" + url + '\'' +
+            ", relevanceScore=" + relevanceScore + ", retrievedAt=" + retrievedAt + ", language='" + language + '\'' + ", domain='" + domain + '\'' +
+            ", wordCount=" + wordCount + '}';
     }
 }

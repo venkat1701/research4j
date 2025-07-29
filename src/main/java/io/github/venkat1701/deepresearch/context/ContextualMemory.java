@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import io.github.venkat1701.citation.CitationResult;
 
-
 public class ContextualMemory {
 
     private final Map<String, MemoryNode> memoryNodes;
@@ -29,14 +28,15 @@ public class ContextualMemory {
         MemoryNode node = new MemoryNode(nodeId, "citation", citation.getContent(), citation.getRelevanceScore());
         node.addMetadata("url", citation.getUrl());
         node.addMetadata("domain", citation.getDomain());
-        node.addMetadata("retrievedAt", citation.getRetrievedAt().toString());
+        node.addMetadata("retrievedAt", citation.getRetrievedAt()
+            .toString());
 
         memoryNodes.put(nodeId, node);
         relevanceScores.put(nodeId, citation.getRelevanceScore());
         accessTimestamps.put(nodeId, Instant.now());
 
-        
-        contextualConnections.computeIfAbsent(context, k -> new ArrayList<>()).add(nodeId);
+        contextualConnections.computeIfAbsent(context, k -> new ArrayList<>())
+            .add(nodeId);
     }
 
     public void updateKnowledge(String key, Object value) {
@@ -59,11 +59,12 @@ public class ContextualMemory {
 
     public List<MemoryNode> searchMemories(String query, int limit) {
         String queryLower = query.toLowerCase();
-        return memoryNodes.values().stream()
-            .filter(node -> node.getContent().toLowerCase().contains(queryLower))
-            .sorted((n1, n2) -> Double.compare(
-                relevanceScores.getOrDefault(n2.getId(), 0.0),
-                relevanceScores.getOrDefault(n1.getId(), 0.0)))
+        return memoryNodes.values()
+            .stream()
+            .filter(node -> node.getContent()
+                .toLowerCase()
+                .contains(queryLower))
+            .sorted((n1, n2) -> Double.compare(relevanceScores.getOrDefault(n2.getId(), 0.0), relevanceScores.getOrDefault(n1.getId(), 0.0)))
             .limit(limit)
             .peek(node -> accessTimestamps.put(node.getId(), Instant.now()))
             .collect(java.util.stream.Collectors.toList());
@@ -74,6 +75,7 @@ public class ContextualMemory {
     }
 
     public static class MemoryNode {
+
         private final String id;
         private final String type;
         private final String content;
@@ -94,12 +96,28 @@ public class ContextualMemory {
             metadata.put(key, value);
         }
 
-        
-        public String getId() { return id; }
-        public String getType() { return type; }
-        public String getContent() { return content; }
-        public double getRelevance() { return relevance; }
-        public Map<String, Object> getMetadata() { return metadata; }
-        public Instant getCreatedAt() { return createdAt; }
+        public String getId() {
+            return id;
+        }
+
+        public String getType() {
+            return type;
+        }
+
+        public String getContent() {
+            return content;
+        }
+
+        public double getRelevance() {
+            return relevance;
+        }
+
+        public Map<String, Object> getMetadata() {
+            return metadata;
+        }
+
+        public Instant getCreatedAt() {
+            return createdAt;
+        }
     }
 }

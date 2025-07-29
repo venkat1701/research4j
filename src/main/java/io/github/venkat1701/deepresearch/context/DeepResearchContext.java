@@ -1,287 +1,403 @@
 package io.github.venkat1701.deepresearch.context;
 
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.deepresearch.models.DeepResearchConfig;
 import io.github.venkat1701.deepresearch.models.ResearchQuestion;
-import io.github.venkat1701.pipeline.profile.UserProfile;
 
 
 public class DeepResearchContext {
 
     private final String sessionId;
     private final String originalQuery;
-    private final UserProfile userProfile;
     private final DeepResearchConfig config;
     private final Instant startTime;
 
     
+    private final List<CitationResult> allCitations;
+    private final Map<String, String> allInsights;
     private final List<ResearchQuestion> researchQuestions;
-    private final Map<String, List<CitationResult>> citationsByQuestion;
-    private final Map<String, String> insightsByQuestion;
-    private final Map<String, Object> knowledgeMap;
-    private final Map<String, Set<String>> knowledgeRelationships;
-    private final List<String> inconsistencies;
+    private final Set<String> exploredTopics;
+    private final Map<String, Object> sessionMetadata;
 
     
-    private final ContextualMemory contextualMemory;
-    private final ConceptualGraph conceptualGraph;
-    private final InformationHierarchy informationHierarchy;
-    private final Map<String, Double> conceptImportance;
-    private final Map<String, List<String>> semanticClusters;
+    private int currentRound;
+    private int totalQuestionsGenerated;
+    private int totalQuestionsResearched;
+    private double averageRelevanceScore;
 
     
-    private volatile String currentFocus;
-    private final List<String> processedConcepts;
-    private final Map<String, Object> processingMetadata;
+    private final Map<String, String> threadSafeInsights;
+    private final List<CitationResult> threadSafeCitations;
 
-    public DeepResearchContext(String sessionId, String originalQuery,
-        UserProfile userProfile, DeepResearchConfig config) {
+    public DeepResearchContext(String sessionId, String originalQuery, DeepResearchConfig config) {
         this.sessionId = sessionId;
         this.originalQuery = originalQuery;
-        this.userProfile = userProfile;
         this.config = config;
         this.startTime = Instant.now();
 
         
-        this.researchQuestions = new ArrayList<>();
-        this.citationsByQuestion = new ConcurrentHashMap<>();
-        this.insightsByQuestion = new ConcurrentHashMap<>();
-        this.knowledgeMap = new ConcurrentHashMap<>();
-        this.knowledgeRelationships = new ConcurrentHashMap<>();
-        this.inconsistencies = new ArrayList<>();
+        this.allCitations = Collections.synchronizedList(new ArrayList<>());
+        this.allInsights = new ConcurrentHashMap<>();
+        this.researchQuestions = Collections.synchronizedList(new ArrayList<>());
+        this.exploredTopics = Collections.synchronizedSet(new HashSet<>());
+        this.sessionMetadata = new ConcurrentHashMap<>();
 
         
-        this.contextualMemory = new ContextualMemory();
-        this.conceptualGraph = new ConceptualGraph();
-        this.informationHierarchy = new InformationHierarchy();
-        this.conceptImportance = new ConcurrentHashMap<>();
-        this.semanticClusters = new ConcurrentHashMap<>();
+        this.threadSafeInsights = new ConcurrentHashMap<>();
+        this.threadSafeCitations = Collections.synchronizedList(new ArrayList<>());
 
         
-        this.processedConcepts = new ArrayList<>();
-        this.processingMetadata = new ConcurrentHashMap<>();
+        this.currentRound = 0;
+        this.totalQuestionsGenerated = 0;
+        this.totalQuestionsResearched = 0;
+        this.averageRelevanceScore = 0.0;
+
+        
+        initializeSessionMetadata();
+    }
+
+    private void initializeSessionMetadata() {
+        sessionMetadata.put("startTime", startTime);
+        sessionMetadata.put("originalQuery", originalQuery);
+        sessionMetadata.put("researchDepth", config.getResearchDepth());
+        sessionMetadata.put("version", "1.0");
+        sessionMetadata.put("engine", "DeepResearchEngine");
     }
 
     
-    public String getSessionId() { return sessionId; }
-    public String getOriginalQuery() { return originalQuery; }
-    public UserProfile getUserProfile() { return userProfile; }
-    public DeepResearchConfig getConfig() { return config; }
-    public Instant getStartTime() { return startTime; }
+    public synchronized void addCitation(CitationResult citation) {
+        if (citation != null && !allCitations.contains(citation)) {
+            allCitations.add(citation);
+            threadSafeCitations.add(citation);
+            updateAverageRelevanceScore();
 
-    
-    public List<ResearchQuestion> getResearchQuestions() {
-        return new ArrayList<>(researchQuestions);
-    }
-
-    public void addResearchQuestions(List<ResearchQuestion> questions) {
-        this.researchQuestions.addAll(questions);
-
-        
-        for (ResearchQuestion question : questions) {
-            conceptualGraph.addConcept(question.getQuestion(), question.getCategory());
-            updateConceptImportance(question.getQuestion(), question.getPriority().getValue());
+            
+            extractTopicsFromCitation(citation);
         }
     }
 
-    
-    public void addCitations(String questionKey, List<CitationResult> citations) {
-        citationsByQuestion.merge(questionKey, citations, (existing, newList) -> {
-            List<CitationResult> merged = new ArrayList<>(existing);
-            merged.addAll(newList);
-            return merged;
-        });
-
-        
+    public synchronized void addCitations(List<CitationResult> citations) {
         for (CitationResult citation : citations) {
-            contextualMemory.addCitation(questionKey, citation);
-            conceptualGraph.addRelationship(questionKey, citation.getTitle());
+            addCitation(citation);
         }
     }
 
-    public List<CitationResult> getAllCitations() {
-        return citationsByQuestion.values().stream()
-            .flatMap(List::stream)
-            .distinct()
-            .collect(java.util.stream.Collectors.toList());
-    }
-
-    public List<CitationResult> getCitationsForQuestion(String questionKey) {
-        return citationsByQuestion.getOrDefault(questionKey, List.of());
-    }
-
     
-    public void addInsights(String questionKey, String insights) {
-        insightsByQuestion.put(questionKey, insights);
-
-        
-        List<String> extractedConcepts = extractConcepts(insights);
-        for (String concept : extractedConcepts) {
-            conceptualGraph.addConcept(concept, "insight");
-            conceptualGraph.addRelationship(questionKey, concept);
-            updateConceptImportance(concept, 2.0); 
+    public void addInsight(String question, String insight) {
+        if (question != null && insight != null && !insight.trim().isEmpty()) {
+            allInsights.put(question, insight);
+            threadSafeInsights.put(question, insight);
         }
-
-        
-        informationHierarchy.addInformation(questionKey, insights, "insight");
     }
 
-    public String getInsightsForQuestion(String questionKey) {
-        return insightsByQuestion.get(questionKey);
-    }
-
-    public Map<String, String> getAllInsights() {
-        return new HashMap<>(insightsByQuestion);
+    public void addInsights(Map<String, String> insights) {
+        for (Map.Entry<String, String> entry : insights.entrySet()) {
+            addInsight(entry.getKey(), entry.getValue());
+        }
     }
 
     
-    public Map<String, Object> getKnowledgeMap() {
-        return new HashMap<>(knowledgeMap);
+    public synchronized void addResearchQuestion(ResearchQuestion question) {
+        if (question != null && !researchQuestions.contains(question)) {
+            researchQuestions.add(question);
+            totalQuestionsGenerated++;
+
+            
+            exploredTopics.addAll(question.getKeywords());
+        }
     }
 
-    public void updateKnowledgeMap(String key, Object value) {
-        knowledgeMap.put(key, value);
+    public synchronized void addResearchQuestions(List<ResearchQuestion> questions) {
+        for (ResearchQuestion question : questions) {
+            addResearchQuestion(question);
+        }
+    }
 
-        
-        contextualMemory.updateKnowledge(key, value);
+    public synchronized void markQuestionAsResearched(ResearchQuestion question) {
+        if (question != null && researchQuestions.contains(question)) {
+            question.markAsResearched();
+            totalQuestionsResearched++;
+        }
     }
 
     
-    public Map<String, Set<String>> getKnowledgeRelationships() {
-        return new HashMap<>(knowledgeRelationships);
+    public void addExploredTopic(String topic) {
+        if (topic != null && !topic.trim().isEmpty()) {
+            exploredTopics.add(topic.toLowerCase().trim());
+        }
     }
 
-    public void setKnowledgeRelationships(Map<String, Set<String>> relationships) {
-        this.knowledgeRelationships.clear();
-        this.knowledgeRelationships.putAll(relationships);
+    public void addExploredTopics(Collection<String> topics) {
+        for (String topic : topics) {
+            addExploredTopic(topic);
+        }
+    }
 
-        
-        for (Map.Entry<String, Set<String>> entry : relationships.entrySet()) {
-            for (String related : entry.getValue()) {
-                conceptualGraph.addRelationship(entry.getKey(), related);
+    
+    public void incrementRound() {
+        this.currentRound++;
+        sessionMetadata.put("currentRound", currentRound);
+    }
+
+    public void updateProgress(int questionsGenerated, int questionsResearched) {
+        this.totalQuestionsGenerated += questionsGenerated;
+        this.totalQuestionsResearched += questionsResearched;
+
+        sessionMetadata.put("totalQuestionsGenerated", totalQuestionsGenerated);
+        sessionMetadata.put("totalQuestionsResearched", totalQuestionsResearched);
+        sessionMetadata.put("completionRate", getCompletionRate());
+    }
+
+    
+    public double getCompletionRate() {
+        return totalQuestionsGenerated > 0 ?
+            (double) totalQuestionsResearched / totalQuestionsGenerated : 0.0;
+    }
+
+    public Map<String, Integer> getCategoryDistribution() {
+        Map<String, Integer> distribution = new HashMap<>();
+
+        synchronized (researchQuestions) {
+            for (ResearchQuestion question : researchQuestions) {
+                String category = question.getCategory();
+                distribution.merge(category, 1, Integer::sum);
             }
         }
+
+        return distribution;
+    }
+
+    public Map<String, Integer> getDomainDistribution() {
+        Map<String, Integer> distribution = new HashMap<>();
+
+        synchronized (allCitations) {
+            for (CitationResult citation : allCitations) {
+                String domain = citation.getDomain();
+                distribution.merge(domain, 1, Integer::sum);
+            }
+        }
+
+        return distribution;
+    }
+
+    public int getUniqueDomainsCount() {
+        return getDomainDistribution().size();
+    }
+
+    public List<ResearchQuestion> getHighPriorityQuestions() {
+        synchronized (researchQuestions) {
+            return researchQuestions.stream()
+                .filter(q -> q.getPriority() == ResearchQuestion.Priority.HIGH)
+                .toList();
+        }
+    }
+
+    public List<ResearchQuestion> getUnresearchedQuestions() {
+        synchronized (researchQuestions) {
+            return researchQuestions.stream()
+                .filter(q -> !q.isResearched())
+                .toList();
+        }
     }
 
     
-    public void addInconsistencies(List<String> inconsistencies) {
-        this.inconsistencies.addAll(inconsistencies);
-    }
-
-    public List<String> getInconsistencies() {
-        return new ArrayList<>(inconsistencies);
-    }
-
-    
-    public ContextualMemory getContextualMemory() {
-        return contextualMemory;
-    }
-
-    public ConceptualGraph getConceptualGraph() {
-        return conceptualGraph;
-    }
-
-    public InformationHierarchy getInformationHierarchy() {
-        return informationHierarchy;
-    }
-
-    public Map<String, Double> getConceptImportance() {
-        return new HashMap<>(conceptImportance);
-    }
-
-    public Map<String, List<String>> getSemanticClusters() {
-        return new HashMap<>(semanticClusters);
-    }
-
-    public void updateSemanticClusters(Map<String, List<String>> clusters) {
-        this.semanticClusters.clear();
-        this.semanticClusters.putAll(clusters);
+    public ContextSummary generateSummary() {
+        return new ContextSummary(
+            sessionId,
+            originalQuery,
+            currentRound,
+            allCitations.size(),
+            allInsights.size(),
+            researchQuestions.size(),
+            totalQuestionsResearched,
+            exploredTopics.size(),
+            averageRelevanceScore,
+            getCompletionRate(),
+            getUniqueDomainsCount(),
+            startTime,
+            Instant.now()
+        );
     }
 
     
-    public String getCurrentFocus() {
-        return currentFocus;
-    }
+    public Map<String, Object> exportContext() {
+        Map<String, Object> export = new HashMap<>();
 
-    public void setCurrentFocus(String focus) {
-        this.currentFocus = focus;
-        this.processedConcepts.add(focus);
-    }
+        export.put("sessionId", sessionId);
+        export.put("originalQuery", originalQuery);
+        export.put("config", config);
+        export.put("startTime", startTime);
+        export.put("currentRound", currentRound);
 
-    public List<String> getProcessedConcepts() {
-        return new ArrayList<>(processedConcepts);
-    }
-
-    public Map<String, Object> getProcessingMetadata() {
-        return new HashMap<>(processingMetadata);
-    }
-
-    public void addProcessingMetadata(String key, Object value) {
-        this.processingMetadata.put(key, value);
-    }
-
-    
-    private void updateConceptImportance(String concept, double importance) {
-        conceptImportance.merge(concept, importance, Double::sum);
-    }
-
-    private List<String> extractConcepts(String text) {
         
-        List<String> concepts = new ArrayList<>();
-        String[] words = text.toLowerCase().split("\\W+");
+        export.put("totalCitations", allCitations.size());
+        export.put("totalInsights", allInsights.size());
+        export.put("totalQuestions", researchQuestions.size());
+        export.put("completionRate", getCompletionRate());
+        export.put("averageRelevanceScore", averageRelevanceScore);
+        export.put("uniqueDomains", getUniqueDomainsCount());
+
+        
+        export.put("exploredTopics", new ArrayList<>(exploredTopics));
+        export.put("categoryDistribution", getCategoryDistribution());
+        export.put("domainDistribution", getDomainDistribution());
+        export.put("sessionMetadata", new HashMap<>(sessionMetadata));
+
+        return export;
+    }
+
+    
+    private void updateAverageRelevanceScore() {
+        synchronized (allCitations) {
+            this.averageRelevanceScore = allCitations.stream()
+                .mapToDouble(CitationResult::getRelevanceScore)
+                .average()
+                .orElse(0.0);
+        }
+        sessionMetadata.put("averageRelevanceScore", averageRelevanceScore);
+    }
+
+    private void extractTopicsFromCitation(CitationResult citation) {
+        
+        String text = (citation.getTitle() + " " + citation.getContent()).toLowerCase();
+        String[] words = text.split("\\W+");
 
         for (String word : words) {
             if (word.length() > 4 && !isStopWord(word)) {
-                concepts.add(word);
+                exploredTopics.add(word);
             }
         }
-
-        return concepts;
     }
 
     private boolean isStopWord(String word) {
-        Set<String> stopWords = Set.of("this", "that", "with", "have", "will", "from", "they", "been", "said", "each", "which", "their", "time", "about");
-        return stopWords.contains(word);
+        Set<String> stopWords = Set.of(
+            "the", "and", "for", "are", "but", "not", "you", "all", "can", "had", "her", "was", "one",
+            "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now", "old",
+            "see", "two", "way", "who", "with", "that", "this", "from", "they", "know", "want", "been",
+            "good", "much", "some", "time", "very", "when", "come", "here", "just", "like", "long",
+            "make", "many", "over", "such", "take", "than", "them", "well", "will"
+        );
+        return stopWords.contains(word.toLowerCase());
     }
 
     
-    public double getContextualRelevance(String concept) {
-        return conceptImportance.getOrDefault(concept, 0.0);
+    public String getSessionId() {
+        return sessionId;
     }
 
-    public List<String> getRelatedConcepts(String concept) {
-        return conceptualGraph.getRelatedConcepts(concept);
+    public String getOriginalQuery() {
+        return originalQuery;
     }
 
-    public List<String> getMostImportantConcepts(int limit) {
-        return conceptImportance.entrySet().stream()
-            .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-            .limit(limit)
-            .map(Map.Entry::getKey)
-            .collect(java.util.stream.Collectors.toList());
+    public DeepResearchConfig getConfig() {
+        return config;
     }
 
-    public Map<String, Object> getContextSummary() {
-        Map<String, Object> summary = new HashMap<>();
-        summary.put("sessionId", sessionId);
-        summary.put("originalQuery", originalQuery);
-        summary.put("totalQuestions", researchQuestions.size());
-        summary.put("totalCitations", getAllCitations().size());
-        summary.put("totalConcepts", conceptualGraph.getConceptCount());
-        summary.put("averageRelevance", getAllCitations().stream()
-            .mapToDouble(CitationResult::getRelevanceScore)
-            .average().orElse(0.0));
-        summary.put("topConcepts", getMostImportantConcepts(5));
-        summary.put("processingDuration", java.time.Duration.between(startTime, Instant.now()));
+    public Instant getStartTime() {
+        return startTime;
+    }
 
-        return summary;
+    public List<CitationResult> getAllCitations() {
+        synchronized (allCitations) {
+            return new ArrayList<>(allCitations);
+        }
+    }
+
+    public Map<String, String> getAllInsights() {
+        return new HashMap<>(allInsights);
+    }
+
+    public List<ResearchQuestion> getResearchQuestions() {
+        synchronized (researchQuestions) {
+            return new ArrayList<>(researchQuestions);
+        }
+    }
+
+    public Set<String> getExploredTopics() {
+        return new HashSet<>(exploredTopics);
+    }
+
+    public int getCurrentRound() {
+        return currentRound;
+    }
+
+    public int getTotalQuestionsGenerated() {
+        return totalQuestionsGenerated;
+    }
+
+    public int getTotalQuestionsResearched() {
+        return totalQuestionsResearched;
+    }
+
+    public double getAverageRelevanceScore() {
+        return averageRelevanceScore;
+    }
+
+    public Map<String, Object> getSessionMetadata() {
+        return new HashMap<>(sessionMetadata);
+    }
+
+    
+    public static class ContextSummary {
+        private final String sessionId;
+        private final String originalQuery;
+        private final int currentRound;
+        private final int totalCitations;
+        private final int totalInsights;
+        private final int totalQuestions;
+        private final int researchedQuestions;
+        private final int exploredTopics;
+        private final double averageRelevanceScore;
+        private final double completionRate;
+        private final int uniqueDomains;
+        private final Instant startTime;
+        private final Instant summaryTime;
+
+        public ContextSummary(String sessionId, String originalQuery, int currentRound,
+            int totalCitations, int totalInsights, int totalQuestions,
+            int researchedQuestions, int exploredTopics, double averageRelevanceScore,
+            double completionRate, int uniqueDomains, Instant startTime, Instant summaryTime) {
+            this.sessionId = sessionId;
+            this.originalQuery = originalQuery;
+            this.currentRound = currentRound;
+            this.totalCitations = totalCitations;
+            this.totalInsights = totalInsights;
+            this.totalQuestions = totalQuestions;
+            this.researchedQuestions = researchedQuestions;
+            this.exploredTopics = exploredTopics;
+            this.averageRelevanceScore = averageRelevanceScore;
+            this.completionRate = completionRate;
+            this.uniqueDomains = uniqueDomains;
+            this.startTime = startTime;
+            this.summaryTime = summaryTime;
+        }
+
+        
+        public String getSessionId() { return sessionId; }
+        public String getOriginalQuery() { return originalQuery; }
+        public int getCurrentRound() { return currentRound; }
+        public int getTotalCitations() { return totalCitations; }
+        public int getTotalInsights() { return totalInsights; }
+        public int getTotalQuestions() { return totalQuestions; }
+        public int getResearchedQuestions() { return researchedQuestions; }
+        public int getExploredTopics() { return exploredTopics; }
+        public double getAverageRelevanceScore() { return averageRelevanceScore; }
+        public double getCompletionRate() { return completionRate; }
+        public int getUniqueDomains() { return uniqueDomains; }
+        public Instant getStartTime() { return startTime; }
+        public Instant getSummaryTime() { return summaryTime; }
+
+        @Override
+        public String toString() {
+            return String.format(
+                "Context Summary [%s]: Round %d, %d citations, %d insights, %d/%d questions (%.1f%% complete)",
+                sessionId, currentRound, totalCitations, totalInsights,
+                researchedQuestions, totalQuestions, completionRate * 100
+            );
+        }
     }
 }
