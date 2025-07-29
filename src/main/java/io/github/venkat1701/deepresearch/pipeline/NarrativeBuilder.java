@@ -16,11 +16,7 @@ import io.github.venkat1701.deepresearch.models.ResearchQuestion;
 import io.github.venkat1701.deepresearch.pipeline.ContextAwareChunker;
 import io.github.venkat1701.deepresearch.pipeline.HierarchicalSynthesizer;
 
-/**
- * Advanced Narrative Builder - Constructs comprehensive, well-connected long-form narratives
- * Overcomes context limits through hierarchical chunking and progressive synthesis
- * Inspired by Perplexity Deep Research and Gemini Deep Research implementations
- */
+
 public class NarrativeBuilder {
 
     private static final Logger logger = Logger.getLogger(NarrativeBuilder.class.getName());
@@ -45,10 +41,7 @@ public class NarrativeBuilder {
         this.executorService = executorService;
     }
 
-    /**
-     * Build comprehensive long-form narrative using advanced context management
-     * Implements parallel processing and hierarchical synthesis like Perplexity Deep Research
-     */
+    
     public String buildComprehensiveNarrative(DeepResearchContext context,
         String synthesizedKnowledge) {
         try {
@@ -80,10 +73,7 @@ public class NarrativeBuilder {
         }
     }
 
-    /**
-     * Plan adaptive narrative structure based on research depth and complexity
-     * Emulates Gemini Deep Research's multi-step planning approach
-     */
+    
     private NarrativeStructure planAdaptiveNarrativeStructure(DeepResearchContext context) {
         try {
             String structurePlanningPrompt = buildAdvancedStructurePlanningPrompt(context);
@@ -105,9 +95,7 @@ public class NarrativeBuilder {
         }
     }
 
-    /**
-     * Build advanced structure planning prompt with context awareness
-     */
+    
     private String buildAdvancedStructurePlanningPrompt(DeepResearchContext context) {
         int researchComplexity = calculateResearchComplexity(context);
         String researchCategories = getUniqueResearchCategories(context);
@@ -152,9 +140,7 @@ public class NarrativeBuilder {
         );
     }
 
-    /**
-     * Generate sections in parallel with intelligent context management
-     */
+    
     private Map<String, String> generateSectionsInParallel(NarrativeStructure structure,
         List<ContextAwareChunker.ContentChunk> contentChunks,
         DeepResearchContext context) {
@@ -182,9 +168,7 @@ public class NarrativeBuilder {
         }
     }
 
-    /**
-     * Generate context-aware section with advanced chunking
-     */
+    
     private String generateContextAwareSection(NarrativeSection section,
         List<ContextAwareChunker.ContentChunk> contentChunks,
         DeepResearchContext context) {
@@ -220,9 +204,7 @@ public class NarrativeBuilder {
         }
     }
 
-    /**
-     * Build context-aware section prompt with intelligent content selection
-     */
+    
     private String buildContextAwareSectionPrompt(NarrativeSection section,
         ContextAwareChunker.ContentChunk chunk,
         DeepResearchContext context) {
@@ -273,9 +255,7 @@ public class NarrativeBuilder {
         );
     }
 
-    /**
-     * Assemble progressive narrative with context continuity
-     */
+    
     private String assembleProgressiveNarrative(NarrativeStructure structure,
         Map<String, String> sectionContents,
         DeepResearchContext context) {
@@ -314,9 +294,7 @@ public class NarrativeBuilder {
         return narrative.toString();
     }
 
-    /**
-     * Enhance narrative coherence through AI-powered review and refinement
-     */
+    
     private String enhanceNarrativeCoherence(String narrative, DeepResearchContext context) {
         try {
             

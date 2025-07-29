@@ -3,14 +3,12 @@ package io.github.venkat1701.deepresearch.models;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-/**
- * Research Question - Represents a specific research question with metadata
- */
 public class ResearchQuestion {
 
     public enum Priority {
@@ -40,34 +38,6 @@ public class ResearchQuestion {
     private List<String> keywords;
     private String expectedOutcome;
 
-    public ResearchQuestion(String question, Priority priority, String category) {
-        this.question = question;
-        this.priority = priority;
-        this.category = category;
-        this.researched = false;
-        this.createdAt = Instant.now();
-        this.rationale = "";
-        this.metadata = new HashMap<>();
-        this.keywords = extractKeywords(question);
-        this.expectedOutcome = "";
-    }
-
-    public ResearchQuestion(String question, String category, String priorityStr) {
-        this(question, parsePriority(priorityStr), category);
-    }
-
-    private static Priority parsePriority(String priorityStr) {
-        if (priorityStr == null) {
-            return Priority.MEDIUM;
-        }
-
-        return switch (priorityStr.toLowerCase()) {
-            case "high" -> Priority.HIGH;
-            case "low" -> Priority.LOW;
-            default -> Priority.MEDIUM;
-        };
-    }
-
     private List<String> extractKeywords(String questionText) {
         if (questionText == null || questionText.isEmpty()) {
             return new ArrayList<>();
@@ -88,11 +58,153 @@ public class ResearchQuestion {
         return keywords;
     }
 
+    public ResearchQuestion(String question, Priority priority, String category) {
+        if (question == null || question.trim()
+            .isEmpty()) {
+            throw new IllegalArgumentException("Question cannot be null or empty");
+        }
+        if (category == null || category.trim()
+            .isEmpty()) {
+            throw new IllegalArgumentException("Category cannot be null or empty");
+        }
+
+        this.question = question.trim();
+        this.priority = priority != null ? priority : Priority.MEDIUM;
+        this.category = category.trim();
+        this.researched = false;
+        this.createdAt = Instant.now();
+        this.rationale = "";
+        this.metadata = new HashMap<>();
+        this.keywords = extractKeywordsSafely(this.question);
+        this.expectedOutcome = "";
+    }
+
+    public ResearchQuestion(String question, String category, String priorityStr) {
+        this(question, parsePriority(priorityStr), category);
+    }
+
+    private List<String> extractKeywordsSafely(String questionText) {
+        List<String> keywords = new ArrayList<>();
+
+        if (questionText == null || questionText.trim()
+            .isEmpty()) {
+            return keywords;
+        }
+
+        try {
+
+            String cleanText = questionText.toLowerCase()
+                .replaceAll("[^a-zA-Z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+            if (cleanText.isEmpty()) {
+                return keywords;
+            }
+
+            String[] words = cleanText.split("\\s+");
+
+            Set<String> uniqueKeywords = new LinkedHashSet<>();
+
+            for (String word : words) {
+                if (word != null && !word.trim()
+                    .isEmpty()) {
+                    String cleanWord = word.trim();
+
+                    if (cleanWord.length() > 3 && !isStopWordSafe(cleanWord)) {
+                        uniqueKeywords.add(cleanWord);
+                    }
+                }
+            }
+
+            keywords.addAll(uniqueKeywords);
+
+        } catch (Exception e) {
+
+            System.err.println("Error extracting keywords from question: " + e.getMessage());
+
+            keywords.clear();
+        }
+
+        return keywords;
+    }
+
+    private boolean isStopWordSafe(String word) {
+        if (word == null || word.trim()
+            .isEmpty()) {
+            return true;
+        }
+
+        try {
+
+            Set<String> stopWords = createSafeStopWordsSet();
+            return stopWords.contains(word.toLowerCase()
+                .trim());
+        } catch (Exception e) {
+
+            System.err.println("Error checking stop word: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private Set<String> createSafeStopWordsSet() {
+        Set<String> stopWords = new LinkedHashSet<>();
+
+        try {
+
+            String[] stopWordArray = { "what", "how", "why", "when", "where", "who", "which", "that", "this", "these", "those", "the", "and", "for", "are",
+                "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "its", "may", "new", "now",
+                "old", "see", "two", "way", "boy", "did", "down", "each", "find", "good", "have", "like", "make", "said", "she", "they", "time", "very", "will",
+                "with", "your" };
+
+            for (String word : stopWordArray) {
+                if (word != null && !word.trim()
+                    .isEmpty()) {
+                    try {
+                        stopWords.add(word.trim()
+                            .toLowerCase());
+                    } catch (Exception e) {
+
+                        System.err.println("Error adding stop word '" + word + "': " + e.getMessage());
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("Error creating stop words set: " + e.getMessage());
+
+            return new LinkedHashSet<>();
+        }
+
+        return stopWords;
+    }
+
+    private static Priority parsePriority(String priorityStr) {
+        if (priorityStr == null || priorityStr.trim()
+            .isEmpty()) {
+            return Priority.MEDIUM;
+        }
+
+        try {
+            String cleanPriority = priorityStr.trim()
+                .toLowerCase();
+            return switch (cleanPriority) {
+                case "high" -> Priority.HIGH;
+                case "low" -> Priority.LOW;
+                case "medium" -> Priority.MEDIUM;
+                default -> Priority.MEDIUM;
+            };
+        } catch (Exception e) {
+            System.err.println("Error parsing priority '" + priorityStr + "': " + e.getMessage());
+            return Priority.MEDIUM;
+        }
+    }
+
     private boolean isStopWord(String word) {
-        Set<String> stopWords = Set.of("what", "how", "why", "when", "where", "who", "which", "that", "this", "these", "those", "the", "and", "for", "are",
-            "but", "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now",
-            "old", "see", "two", "way", "who", "boy", "did", "down", "each", "find", "good", "have", "like", "make", "said", "she", "they", "time", "very",
-            "will", "with", "your");
+        Set<String> stopWords = Set.of("what", "why", "when", "where", "who", "which", "that", "this", "these", "those", "the", "and", "for", "are", "but",
+            "not", "you", "all", "can", "had", "her", "was", "one", "our", "out", "day", "get", "has", "him", "his", "how", "its", "may", "new", "now", "old",
+            "see", "two", "way", "who", "boy", "did", "down", "each", "find", "good", "have", "like", "make", "said", "she", "they", "time", "very", "will",
+            "with", "your");
         return stopWords.contains(word.toLowerCase());
     }
 

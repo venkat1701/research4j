@@ -11,9 +11,7 @@ import java.util.Set;
 
 import io.github.venkat1701.core.enums.OutputFormat;
 
-/**
- * Deep Research Configuration - Controls the behavior and parameters of the research process
- */
+
 public class DeepResearchConfig {
 
     public static DeepResearchConfig.Builder builder() {

@@ -5,10 +5,7 @@ import java.util.logging.Logger;
 import io.github.venkat1701.deepresearch.context.DeepResearchContext;
 import io.github.venkat1701.deepresearch.models.NarrativeStructure;
 
-/**
- * Context-Aware Chunker - Handles intelligent content chunking with overlap
- * Overcomes context limits through sophisticated content segmentation
- */
+
 public class ContextAwareChunker {
 
     private static final Logger logger = Logger.getLogger(ContextAwareChunker.class.getName());
@@ -20,9 +17,7 @@ public class ContextAwareChunker {
         this.contextLimit = contextLimit;
     }
 
-    /**
-     * Chunk content with intelligent overlap and theme detection
-     */
+    
     public List<ContentChunk> chunkContent(String content,
         DeepResearchContext context,
         NarrativeStructure structure) {
@@ -70,9 +65,7 @@ public class ContextAwareChunker {
         return chunks;
     }
 
-    /**
-     * Chunk prompts for context window management
-     */
+    
     public List<ContextChunk> chunkPrompt(String prompt) {
         List<ContextChunk> chunks = new ArrayList<>();
 
@@ -111,9 +104,7 @@ public class ContextAwareChunker {
         return chunks;
     }
 
-    /**
-     * Chunk narrative for coherence enhancement
-     */
+    
     public List<ContextChunk> chunkNarrative(String narrative) {
         List<ContextChunk> chunks = new ArrayList<>();
 
@@ -130,9 +121,7 @@ public class ContextAwareChunker {
         return chunks;
     }
 
-    /**
-     * Compress prompt to fit target token count
-     */
+    
     public String compressPrompt(String prompt, int targetTokens) {
         if (countTokens(prompt) <= targetTokens) {
             return prompt;
@@ -149,9 +138,7 @@ public class ContextAwareChunker {
         return prompt.substring(0, breakPoint) + "...";
     }
 
-    /**
-     * Calculate optimal chunk size based on content complexity
-     */
+    
     private int calculateOptimalChunkSize(String content, NarrativeStructure structure) {
         int baseChunkSize = 2000; 
 
@@ -169,9 +156,7 @@ public class ContextAwareChunker {
         return Math.max(1000, Math.min(baseChunkSize, 3000));
     }
 
-    /**
-     * Determine thematic category of content chunk
-     */
+    
     private String determineChunkTheme(String chunk) {
         String lowerChunk = chunk.toLowerCase();
 
@@ -194,9 +179,7 @@ public class ContextAwareChunker {
         return "general";
     }
 
-    /**
-     * Extract overlap content from end of chunk
-     */
+    
     private String extractOverlap(String content, int overlapSize) {
         if (content.length() <= overlapSize) {
             return content;
@@ -213,9 +196,7 @@ public class ContextAwareChunker {
         return content.substring(content.length() - overlapSize);
     }
 
-    /**
-     * Find appropriate sentence break point
-     */
+    
     private int findSentenceBreak(String text, int position) {
         for (int i = Math.min(position, text.length() - 1); i > position - 200 && i > 0; i--) {
             if (text.charAt(i) == '.' || text.charAt(i) == '!' || text.charAt(i) == '?') {
@@ -225,16 +206,12 @@ public class ContextAwareChunker {
         return position;
     }
 
-    /**
-     * Approximate token counting
-     */
+    
     private int countTokens(String text) {
         return text != null ? (int) Math.ceil(text.length() / 4.0) : 0;
     }
 
-    /**
-     * Content Chunk - Represents a segment of content with metadata
-     */
+    
     public static class ContentChunk {
         private final String content;
         private final String theme;
@@ -257,9 +234,7 @@ public class ContextAwareChunker {
         public double getRelevanceScore() { return relevanceScore; }
     }
 
-    /**
-     * Context Chunk - Represents a prompt chunk with token management
-     */
+    
     public static class ContextChunk {
         private final String content;
         private final int tokenCount;

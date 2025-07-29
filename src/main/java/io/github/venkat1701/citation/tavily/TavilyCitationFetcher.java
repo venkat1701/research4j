@@ -6,10 +6,10 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Set;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -28,12 +28,10 @@ import io.github.venkat1701.citation.CitationFetcher;
 import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.exceptions.citation.CitationException;
 
-
 public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
 
     private static final Logger logger = Logger.getLogger(TavilyCitationFetcher.class.getName());
 
-    
     private static final Duration DEFAULT_HTTP_TIMEOUT = Duration.ofSeconds(15);
     private static final Duration CONNECTION_TIMEOUT = Duration.ofSeconds(8);
     private static final int MAX_CONTENT_LENGTH = 10000;
@@ -48,21 +46,20 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
     private volatile boolean closed = false;
 
     public TavilyCitationFetcher(String apiKey) throws CitationException {
-        if (apiKey == null || apiKey.trim().isEmpty()) {
-            throw new CitationException("Tavily API key cannot be null or empty",
-                null, "initialization", "TAVILY");
+        if (apiKey == null || apiKey.trim()
+            .isEmpty()) {
+            throw new CitationException("Tavily API key cannot be null or empty", null, "initialization", "TAVILY");
         }
 
         this.apiKey = apiKey;
 
         try {
-            
+
             this.webSearchEngine = TavilyWebSearchEngine.builder()
                 .apiKey(apiKey)
                 .includeRawContent(true)
                 .build();
 
-            
             this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(CONNECTION_TIMEOUT)
                 .followRedirects(HttpClient.Redirect.NORMAL)
@@ -73,12 +70,10 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             logger.info("TavilyCitationFetcher initialized successfully with enhanced features");
 
         } catch (Exception e) {
-            throw new CitationException("Failed to initialize Tavily citation fetcher: " + e.getMessage(),
-                e, "initialization", "TAVILY");
+            throw new CitationException("Failed to initialize Tavily citation fetcher: " + e.getMessage(), e, "initialization", "TAVILY");
         }
     }
 
-    
     @Override
     public List<CitationResult> fetch(String query) throws CitationException {
         if (closed) {
@@ -90,22 +85,20 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         try {
             logger.info("Fetching citations from Tavily for query: " + truncateString(query, 100));
 
-            
             WebSearchResults searchResults = executeSearchWithRetry(query);
 
-            if (searchResults == null || searchResults.results().isEmpty()) {
+            if (searchResults == null || searchResults.results()
+                .isEmpty()) {
                 logger.warning("No search results found for query: " + query);
                 return new ArrayList<>();
             }
 
-            
             List<CitationResult> citations = processSearchResultsParallel(searchResults, query);
 
-            
             List<CitationResult> validatedCitations = validateAndFilterResults(citations);
 
-            logger.info("Successfully fetched " + validatedCitations.size() +
-                " validated citations from Tavily (from " + searchResults.results().size() + " raw results)");
+            logger.info("Successfully fetched " + validatedCitations.size() + " validated citations from Tavily (from " + searchResults.results()
+                .size() + " raw results)");
 
             return validatedCitations;
 
@@ -113,12 +106,10 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             throw e;
         } catch (Exception e) {
             logger.severe("Error fetching citations from Tavily: " + e.getMessage());
-            throw new CitationException("Tavily search failed: " + e.getMessage(),
-                e, query, "TAVILY");
+            throw new CitationException("Tavily search failed: " + e.getMessage(), e, query, "TAVILY");
         }
     }
 
-    
     private WebSearchResults executeSearchWithRetry(String query) throws CitationException {
         int maxRetries = 3;
         Exception lastException = null;
@@ -129,20 +120,23 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
 
                 WebSearchResults results = webSearchEngine.search(query);
 
-                if (results != null && !results.results().isEmpty()) {
-                    logger.info("Tavily search successful: " + results.results().size() + " results");
+                if (results != null && !results.results()
+                    .isEmpty()) {
+                    logger.info("Tavily search successful: " + results.results()
+                        .size() + " results");
                     return results;
                 }
 
                 logger.warning("Tavily search returned empty results on attempt " + attempt);
 
                 if (attempt < maxRetries) {
-                    
+
                     String enhancedQuery = enhanceQuery(query, attempt);
                     logger.info("Retrying with enhanced query: " + enhancedQuery);
                     results = webSearchEngine.search(enhancedQuery);
 
-                    if (results != null && !results.results().isEmpty()) {
+                    if (results != null && !results.results()
+                        .isEmpty()) {
                         return results;
                     }
                 }
@@ -153,11 +147,12 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
 
                 if (attempt < maxRetries) {
                     try {
-                        
+
                         long delay = 1000L * (long) Math.pow(2, attempt - 1);
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {
-                        Thread.currentThread().interrupt();
+                        Thread.currentThread()
+                            .interrupt();
                         break;
                     }
                 }
@@ -165,29 +160,25 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
 
         if (lastException != null) {
-            throw new CitationException("All Tavily search attempts failed: " + lastException.getMessage(),
-                lastException, query, "TAVILY");
+            throw new CitationException("All Tavily search attempts failed: " + lastException.getMessage(), lastException, query, "TAVILY");
         } else {
-            throw new CitationException("Tavily search returned no results after " + maxRetries + " attempts",
-                null, query, "TAVILY");
+            throw new CitationException("Tavily search returned no results after " + maxRetries + " attempts", null, query, "TAVILY");
         }
     }
 
-    
     private String enhanceQuery(String originalQuery, int attempt) {
         switch (attempt) {
             case 1:
-                return "\"" + originalQuery + "\""; 
+                return "\"" + originalQuery + "\"";
             case 2:
-                return originalQuery + " guide tutorial"; 
+                return originalQuery + " guide tutorial";
             case 3:
-                return originalQuery.replace(" ", " AND "); 
+                return originalQuery.replace(" ", " AND ");
             default:
                 return originalQuery;
         }
     }
 
-    
     private List<CitationResult> processSearchResultsParallel(WebSearchResults searchResults, String originalQuery) {
         List<CompletableFuture<CitationResult>> futures = searchResults.results()
             .stream()
@@ -211,25 +202,20 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         return citations;
     }
 
-    
-    private CompletableFuture<CitationResult> processResultAsync(
-        dev.langchain4j.web.search.WebSearchOrganicResult result,
-        String originalQuery) {
+    private CompletableFuture<CitationResult> processResultAsync(dev.langchain4j.web.search.WebSearchOrganicResult result, String originalQuery) {
 
         return CompletableFuture.supplyAsync(() -> {
             try {
-                String url = result.url().toString();
+                String url = result.url()
+                    .toString();
                 String title = cleanText(result.title());
                 String snippet = cleanText(result.snippet());
                 String rawContent = result.content();
 
-                
                 String processedContent = processContent(rawContent, url);
 
-                
                 double relevanceScore = calculateEnhancedRelevanceScore(result, originalQuery, processedContent);
 
-                
                 CitationResult citation = CitationResult.builder()
                     .title(title)
                     .snippet(snippet)
@@ -240,7 +226,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
                     .language(detectLanguage(processedContent))
                     .build();
 
-                
                 enhanceCitationMetadata(citation, result, originalQuery);
 
                 return citation;
@@ -252,18 +237,17 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }, executor);
     }
 
-    
     private String processContent(String rawContent, String url) {
-        if (rawContent == null || rawContent.trim().isEmpty()) {
-            
+        if (rawContent == null || rawContent.trim()
+            .isEmpty()) {
+
             return fetchContentFromUrl(url);
         }
 
         try {
-            
+
             String cleanedContent = cleanHtmlContent(rawContent);
 
-            
             if (cleanedContent.length() < MIN_CONTENT_LENGTH) {
                 String fetchedContent = fetchContentFromUrl(url);
                 if (fetchedContent.length() > cleanedContent.length()) {
@@ -279,85 +263,82 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
     }
 
-    
     private String cleanHtmlContent(String htmlContent) {
-        if (htmlContent == null || htmlContent.trim().isEmpty()) {
+        if (htmlContent == null || htmlContent.trim()
+            .isEmpty()) {
             return "No content available";
         }
 
         try {
-            
+
             Document doc;
             try {
                 doc = Jsoup.parse(htmlContent);
             } catch (Exception e) {
-                
+
                 doc = Jsoup.parse(htmlContent, "", Parser.xmlParser());
             }
 
-            
-            doc.select("script, style, nav, footer, header, aside").remove();
-            doc.select(".advertisement, .ads, .social-media, .comments").remove();
-            doc.select("[class*=ad], [id*=ad], [class*=social], [id*=social]").remove();
-            doc.select("iframe, embed, object").remove();
+            doc.select("script, style, nav, footer, header, aside")
+                .remove();
+            doc.select(".advertisement, .ads, .social-media, .comments")
+                .remove();
+            doc.select("[class*=ad], [id*=ad], [class*=social], [id*=social]")
+                .remove();
+            doc.select("iframe, embed, object")
+                .remove();
 
-            
             String mainContent = extractMainContent(doc);
             if (mainContent != null && mainContent.length() > MIN_CONTENT_LENGTH) {
                 return processTextContent(mainContent);
             }
 
-            
-            String bodyText = doc.body() != null ? doc.body().text() : doc.text();
+            String bodyText = doc.body() != null ? doc.body()
+                .text() : doc.text();
             return processTextContent(bodyText);
 
         } catch (Exception e) {
             logger.warning("Error parsing HTML content: " + e.getMessage());
-            
-            return cleanText(htmlContent.replaceAll("<[^>]+>", " ").replaceAll("\\s+", " "));
+
+            return cleanText(htmlContent.replaceAll("<[^>]+>", " ")
+                .replaceAll("\\s+", " "));
         }
     }
 
-    
     private String extractMainContent(Document doc) {
-        
-        String[] mainSelectors = {
-            "main", "article", ".main-content", ".content", ".post-content",
-            ".entry-content", ".article-content", "#main", "#content",
-            ".container .content", ".page-content", ".post-body"
-        };
+
+        String[] mainSelectors = { "main", "article", ".main-content", ".content", ".post-content", ".entry-content", ".article-content", "#main", "#content",
+            ".container .content", ".page-content", ".post-body" };
 
         for (String selector : mainSelectors) {
             try {
                 var elements = doc.select(selector);
                 if (!elements.isEmpty()) {
-                    String text = elements.first().text();
+                    String text = elements.first()
+                        .text();
                     if (text.length() > MIN_CONTENT_LENGTH) {
                         return text;
                     }
                 }
             } catch (Exception e) {
-                
+
             }
         }
 
         return null;
     }
 
-    
     private String processTextContent(String textContent) {
-        if (textContent == null || textContent.trim().isEmpty()) {
+        if (textContent == null || textContent.trim()
+            .isEmpty()) {
             return "No content available";
         }
 
-        
-        String processed = textContent
-            .replaceAll("\\s+", " ")           
-            .replaceAll("\\n{3,}", "\n\n")     
-            .replaceAll("\\t+", " ")           
+        String processed = textContent.replaceAll("\\s+", " ")
+            .replaceAll("\\n{3,}", "\n\n")
+            .replaceAll("\\t+", " ")
             .trim();
 
-        
         if (processed.length() > MAX_CONTENT_LENGTH) {
             processed = truncateAtSentenceBoundary(processed, MAX_CONTENT_LENGTH);
         }
@@ -365,7 +346,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         return processed;
     }
 
-    
     private String truncateAtSentenceBoundary(String text, int maxLength) {
         if (text.length() <= maxLength) {
             return text;
@@ -373,22 +353,15 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
 
         String truncated = text.substring(0, maxLength);
 
-        
-        int lastSentence = Math.max(
-            truncated.lastIndexOf(". "),
-            Math.max(truncated.lastIndexOf("! "), truncated.lastIndexOf("? "))
-        );
+        int lastSentence = Math.max(truncated.lastIndexOf(". "), Math.max(truncated.lastIndexOf("! "), truncated.lastIndexOf("? ")));
 
-        
         if (lastSentence > maxLength * 0.8) {
             return truncated.substring(0, lastSentence + 1);
         }
 
-        
         return truncated + "...";
     }
 
-    
     private String fetchContentFromUrl(String url) {
         try {
             HttpRequest request = HttpRequest.newBuilder()
@@ -422,20 +395,20 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
     }
 
-    private double calculateEnhancedRelevanceScore(
-        dev.langchain4j.web.search.WebSearchOrganicResult result,
-        String originalQuery,
-        String processedContent) {
+    private double calculateEnhancedRelevanceScore(dev.langchain4j.web.search.WebSearchOrganicResult result, String originalQuery, String processedContent) {
 
         try {
             double score = 0.5;
 
             String queryLower = originalQuery.toLowerCase();
-            String titleLower = result.title() != null ? result.title().toLowerCase() : "";
-            String snippetLower = result.snippet() != null ? result.snippet().toLowerCase() : "";
+            String titleLower = result.title() != null ? result.title()
+                .toLowerCase() : "";
+            String snippetLower = result.snippet() != null ? result.snippet()
+                .toLowerCase() : "";
             String contentLower = processedContent != null ? processedContent.toLowerCase() : "";
-            String url = result.url().toString().toLowerCase();
-
+            String url = result.url()
+                .toString()
+                .toLowerCase();
 
             if (titleLower.contains(queryLower)) {
                 score += 0.3;
@@ -447,7 +420,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
                 score += (titleMatches / (double) queryWords.length) * 0.2;
             }
 
-
             if (!snippetLower.isEmpty()) {
                 String[] queryWords = queryLower.split("\\s+");
                 long snippetMatches = java.util.Arrays.stream(queryWords)
@@ -456,7 +428,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
                 score += (snippetMatches / (double) queryWords.length) * 0.2;
             }
 
-
             if (!contentLower.isEmpty() && processedContent.length() > MIN_CONTENT_LENGTH) {
                 String[] queryWords = queryLower.split("\\s+");
                 long contentMatches = java.util.Arrays.stream(queryWords)
@@ -464,15 +435,12 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
                     .sum();
                 score += (contentMatches / (double) queryWords.length) * 0.25;
 
-
                 if (contentLower.contains(queryLower)) {
                     score += 0.1;
                 }
             }
 
-
             score += calculateDomainAuthority(url) * 0.15;
-
 
             if (processedContent.length() > MIN_CONTENT_LENGTH * 3) {
                 score += 0.05;
@@ -489,7 +457,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
     }
 
-
     private double calculateDomainAuthority(String url) {
         if (url == null || url.isEmpty()) {
             return 0.0;
@@ -497,57 +464,43 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
 
         double score = 0.0;
 
-
-        if (url.contains("wikipedia.org") || url.contains(".edu") ||
-            url.contains(".gov") || url.contains(".org")) {
+        if (url.contains("wikipedia.org") || url.contains(".edu") || url.contains(".gov") || url.contains(".org")) {
             score += 0.8;
         }
 
-
-        if (url.contains("stackoverflow.com") || url.contains("github.com") ||
-            url.contains("medium.com") || url.contains("dev.to")) {
+        if (url.contains("stackoverflow.com") || url.contains("github.com") || url.contains("medium.com") || url.contains("dev.to")) {
             score += 0.6;
         }
 
-
-        if (url.contains("reuters.com") || url.contains("bbc.com") ||
-            url.contains("nature.com") || url.contains("arxiv.org")) {
+        if (url.contains("reuters.com") || url.contains("bbc.com") || url.contains("nature.com") || url.contains("arxiv.org")) {
             score += 0.7;
         }
 
-
-        if (url.contains("docs.") || url.contains("documentation") ||
-            url.contains("tutorial") || url.contains("guide")) {
+        if (url.contains("docs.") || url.contains("documentation") || url.contains("tutorial") || url.contains("guide")) {
             score += 0.5;
         }
-
 
         if (url.startsWith("https://")) {
             score += 0.1;
         }
 
-        
-        if (url.contains("ads") || url.contains("spam") || url.contains("clickbait") ||
-            url.contains("buy") || url.contains("deal")) {
+        if (url.contains("ads") || url.contains("spam") || url.contains("clickbait") || url.contains("buy") || url.contains("deal")) {
             score -= 0.3;
         }
 
         return Math.min(1.0, Math.max(0.0, score));
     }
 
-    
     private String detectLanguage(String content) {
-        if (content == null || content.trim().isEmpty()) {
+        if (content == null || content.trim()
+            .isEmpty()) {
             return "unknown";
         }
 
         String contentLower = content.toLowerCase();
 
-        
-        String[] englishIndicators = {
-            " the ", " and ", " is ", " of ", " to ", " in ", " that ", " for ",
-            " with ", " as ", " be ", " at ", " by ", " this ", " have ", " from "
-        };
+        String[] englishIndicators = { " the ", " and ", " is ", " of ", " to ", " in ", " that ", " for ", " with ", " as ", " be ", " at ", " by ", " this ",
+            " have ", " from " };
 
         int englishMatches = 0;
         for (String indicator : englishIndicators) {
@@ -560,26 +513,22 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             return "en";
         }
 
-        
         return "unknown";
     }
 
-    
-    private void enhanceCitationMetadata(CitationResult citation,
-        dev.langchain4j.web.search.WebSearchOrganicResult result,
-        String originalQuery) {
+    private void enhanceCitationMetadata(CitationResult citation, dev.langchain4j.web.search.WebSearchOrganicResult result, String originalQuery) {
         try {
-            
+
             citation.addMetadata("source", "tavily");
             citation.addMetadata("search_query", originalQuery);
-            citation.addMetadata("fetched_at", java.time.Instant.now().toString());
+            citation.addMetadata("fetched_at", java.time.Instant.now()
+                .toString());
 
-            
-            String url = result.url().toString();
+            String url = result.url()
+                .toString();
             citation.addMetadata("url_scheme", url.startsWith("https") ? "https" : "http");
             citation.addMetadata("domain_type", classifyDomain(url));
 
-            
             String content = citation.getContent();
             if (content != null) {
                 citation.addMetadata("content_length", String.valueOf(content.length()));
@@ -591,32 +540,48 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
     }
 
-    
     private String classifyDomain(String url) {
         String urlLower = url.toLowerCase();
 
-        if (urlLower.contains(".edu")) return "educational";
-        if (urlLower.contains(".gov")) return "government";
-        if (urlLower.contains(".org")) return "organization";
-        if (urlLower.contains("wikipedia")) return "encyclopedia";
-        if (urlLower.contains("github")) return "code_repository";
-        if (urlLower.contains("stackoverflow")) return "q_and_a";
-        if (urlLower.contains("medium") || urlLower.contains("blog")) return "blog";
-        if (urlLower.contains("news")) return "news";
-        if (urlLower.contains("docs.") || urlLower.contains("documentation")) return "documentation";
+        if (urlLower.contains(".edu")) {
+            return "educational";
+        }
+        if (urlLower.contains(".gov")) {
+            return "government";
+        }
+        if (urlLower.contains(".org")) {
+            return "organization";
+        }
+        if (urlLower.contains("wikipedia")) {
+            return "encyclopedia";
+        }
+        if (urlLower.contains("github")) {
+            return "code_repository";
+        }
+        if (urlLower.contains("stackoverflow")) {
+            return "q_and_a";
+        }
+        if (urlLower.contains("medium") || urlLower.contains("blog")) {
+            return "blog";
+        }
+        if (urlLower.contains("news")) {
+            return "news";
+        }
+        if (urlLower.contains("docs.") || urlLower.contains("documentation")) {
+            return "documentation";
+        }
 
         return "general";
     }
 
-    
-    private CitationResult createFallbackCitation(dev.langchain4j.web.search.WebSearchOrganicResult result,
-        String originalQuery) {
+    private CitationResult createFallbackCitation(dev.langchain4j.web.search.WebSearchOrganicResult result, String originalQuery) {
         try {
             return CitationResult.builder()
                 .title(cleanText(result.title() != null ? result.title() : "Unknown Title"))
                 .snippet(cleanText(result.snippet() != null ? result.snippet() : "No snippet available"))
                 .content(cleanText(result.content() != null ? result.content() : "No content available"))
-                .url(result.url().toString())
+                .url(result.url()
+                    .toString())
                 .relevanceScore(0.3)
                 .retrievedAt(LocalDateTime.now())
                 .language("unknown")
@@ -627,7 +592,6 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
         }
     }
 
-    
     private List<CitationResult> validateAndFilterResults(List<CitationResult> citations) {
         if (citations == null || citations.isEmpty()) {
             return new ArrayList<>();
@@ -643,33 +607,28 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             }
         }
 
-        
         validatedResults.sort((c1, c2) -> Double.compare(c2.getRelevanceScore(), c1.getRelevanceScore()));
 
         logger.info("Validated results: " + citations.size() + " -> " + validatedResults.size() + " unique citations");
         return validatedResults;
     }
 
-    
     private boolean isValidCitation(CitationResult citation) {
         if (citation == null || !citation.isValid()) {
             return false;
         }
 
-        
         String content = citation.getContent();
-        if (content == null || content.trim().length() < 50) {
+        if (content == null || content.trim()
+            .length() < 50) {
             return false;
         }
 
-        
-        String title = citation.getTitle() != null ? citation.getTitle().toLowerCase() : "";
+        String title = citation.getTitle() != null ? citation.getTitle()
+            .toLowerCase() : "";
         String contentLower = content.toLowerCase();
 
-        String[] spamIndicators = {
-            "click here", "buy now", "limited time", "act now", "free money",
-            "get rich quick", "lose weight fast", "amazing deal"
-        };
+        String[] spamIndicators = { "click here", "buy now", "limited time", "act now", "free money", "get rich quick", "lose weight fast", "amazing deal" };
 
         for (String indicator : spamIndicators) {
             if (title.contains(indicator) || contentLower.contains(indicator)) {
@@ -677,17 +636,15 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             }
         }
 
-        
         String url = citation.getUrl();
-        if (url == null || url.trim().isEmpty() ||
-            url.contains("javascript:") || url.startsWith("mailto:")) {
+        if (url == null || url.trim()
+            .isEmpty() || url.contains("javascript:") || url.startsWith("mailto:")) {
             return false;
         }
 
         return true;
     }
 
-    
     private String cleanText(String text) {
         if (text == null) {
             return "No content available";
@@ -699,55 +656,48 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             .trim();
     }
 
-    
     private void validateQuery(String query) throws CitationException {
-        if (query == null || query.trim().isEmpty()) {
-            throw new CitationException("Query cannot be null or empty",
-                null, query, "TAVILY");
+        if (query == null || query.trim()
+            .isEmpty()) {
+            throw new CitationException("Query cannot be null or empty", null, query, "TAVILY");
         }
 
         if (query.length() > 500) {
-            throw new CitationException("Query too long (max 500 characters)",
-                null, query, "TAVILY");
+            throw new CitationException("Query too long (max 500 characters)", null, query, "TAVILY");
         }
     }
 
-    
     private String truncateString(String str, int maxLength) {
-        if (str == null) return "null";
+        if (str == null) {
+            return "null";
+        }
         return str.length() <= maxLength ? str : str.substring(0, maxLength) + "...";
     }
 
-    
     public boolean isHealthy() {
         if (closed) {
             return false;
         }
 
         try {
-            
+
             List<CitationResult> results = fetch("test health check");
-            return true; 
+            return true;
         } catch (Exception e) {
             logger.warning("Health check failed: " + e.getMessage());
             return false;
         }
     }
 
-    
     public FetcherConfig getConfig() {
-        return new FetcherConfig(
-            "TAVILY",
-            MAX_RESULTS_PER_SEARCH,
-            DEFAULT_HTTP_TIMEOUT,
-            !closed
-        );
+        return new FetcherConfig("TAVILY", MAX_RESULTS_PER_SEARCH, DEFAULT_HTTP_TIMEOUT, !closed);
     }
 
-    
     @Override
     public void close() {
-        if (closed) return;
+        if (closed) {
+            return;
+        }
 
         closed = true;
         try {
@@ -761,13 +711,14 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             logger.info("TavilyCitationFetcher closed successfully");
         } catch (InterruptedException e) {
             executor.shutdownNow();
-            Thread.currentThread().interrupt();
+            Thread.currentThread()
+                .interrupt();
             logger.warning("Interrupted during shutdown");
         }
     }
 
-    
     public static class FetcherConfig {
+
         private final String source;
         private final int maxResults;
         private final Duration timeout;
@@ -780,15 +731,25 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
             this.active = active;
         }
 
-        public String getSource() { return source; }
-        public int getMaxResults() { return maxResults; }
-        public Duration getTimeout() { return timeout; }
-        public boolean isActive() { return active; }
+        public String getSource() {
+            return source;
+        }
+
+        public int getMaxResults() {
+            return maxResults;
+        }
+
+        public Duration getTimeout() {
+            return timeout;
+        }
+
+        public boolean isActive() {
+            return active;
+        }
 
         @Override
         public String toString() {
-            return String.format("FetcherConfig{source=%s, maxResults=%d, timeout=%s, active=%s}",
-                source, maxResults, timeout, active);
+            return String.format("FetcherConfig{source=%s, maxResults=%d, timeout=%s, active=%s}", source, maxResults, timeout, active);
         }
     }
 }

@@ -11,12 +11,7 @@ import java.util.stream.Collectors;
 
 import io.github.venkat1701.citation.CitationResult;
 
-/**
- * Deep Research Result - Comprehensive container for all research outputs
- * Represents the final deliverable from the Deep Research process
- * Contains narrative, sources, metadata, and quality metrics
- * Unified version supporting multiple implementation patterns
- */
+
 public class DeepResearchResult {
 
     private final String sessionId;
@@ -112,9 +107,7 @@ public class DeepResearchResult {
         this.phaseTimestamps.put("completion", completedAt);
     }
 
-    /**
-     * Get formatted output ready for presentation - merged from both versions
-     */
+    
     public String getFormattedOutput() {
         StringBuilder output = new StringBuilder();
 
@@ -230,25 +223,19 @@ public class DeepResearchResult {
         return output.toString();
     }
 
-    /**
-     * Get research summary for quick overview - merged from both versions
-     */
+    
     public ResearchSummary getSummary() {
         return new ResearchSummary(originalQuery, keyInsights.size() > 0 ? keyInsights.size() : researchQuestions.size(), getAllCitations().size(),
             (narrative != null ? narrative : finalReport).split("\\s+").length,
             qualityMetrics != null ? qualityMetrics.getOverallScore() : metrics.getQualityScore(), createdAt, strategyUsed);
     }
 
-    /**
-     * Get performance analytics - from results version
-     */
+    
     public PerformanceAnalytics getPerformanceAnalytics() {
         return new PerformanceAnalytics(performanceMetrics, results != null ? results.getMetrics() : null, phaseTimestamps);
     }
 
-    /**
-     * Export result in different formats - merged from both versions
-     */
+    
     public Map<String, Object> exportAsMap() {
         Map<String, Object> export = new HashMap<>();
 
@@ -305,9 +292,7 @@ public class DeepResearchResult {
         return export;
     }
 
-    /**
-     * Validate result completeness and quality - merged logic from both versions
-     */
+    
     public ValidationResult validate() {
         List<String> issues = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
@@ -1033,17 +1018,13 @@ public class DeepResearchResult {
         }
     }
 
-    /**
-     * Check if this result contains comprehensive research data
-     */
+    
     public boolean isComprehensive() {
         return getAllCitations().size() >= 15 && (narrative != null ? narrative.split("\\s+").length : 0) >= 2000 &&
             (qualityMetrics != null ? qualityMetrics.getOverallScore() >= 0.7 : false);
     }
 
-    /**
-     * Get research depth assessment
-     */
+    
     public String getResearchDepthAssessment() {
         int sources = getAllCitations().size();
         int wordCount = (narrative != null ? narrative : finalReport).split("\\s+").length;
@@ -1060,9 +1041,7 @@ public class DeepResearchResult {
         }
     }
 
-    /**
-     * Get citation statistics
-     */
+    
     public Map<String, Object> getCitationStatistics() {
         Map<String, Object> stats = new HashMap<>();
         List<CitationResult> citations = getAllCitations();
@@ -1093,9 +1072,7 @@ public class DeepResearchResult {
         return stats;
     }
 
-    /**
-     * Generate compact summary for dashboards or APIs
-     */
+    
     public Map<String, Object> getCompactSummary() {
         Map<String, Object> compact = new HashMap<>();
 
@@ -1112,17 +1089,13 @@ public class DeepResearchResult {
         return compact;
     }
 
-    /**
-     * Check if the result is valid (no critical issues)
-     */
+    
     private boolean isValid() {
         ValidationResult validation = validate();
         return validation.isValid();
     }
 
-    /**
-     * Generate a research report card with letter grades
-     */
+    
     public String generateReportCard() {
         StringBuilder card = new StringBuilder();
         card.append("📊 Research Report Card\n");

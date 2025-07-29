@@ -8,11 +8,7 @@ import io.github.venkat1701.core.contracts.LLMClient;
 import io.github.venkat1701.core.payloads.LLMResponse;
 import io.github.venkat1701.deepresearch.context.DeepResearchContext;
 
-/**
- * Hierarchical Synthesizer - Manages context through progressive synthesis
- * Implements multi-level content synthesis to overcome context limitations
- * Similar to how Perplexity Deep Research builds comprehensive reports
- */
+
 public class HierarchicalSynthesizer {
 
     private static final Logger logger = Logger.getLogger(HierarchicalSynthesizer.class.getName());
@@ -23,11 +19,7 @@ public class HierarchicalSynthesizer {
         this.llmClient = llmClient;
     }
 
-    /**
-     * Synthesize content hierarchically across multiple levels
-     * Level 1: Group related sections
-     * Level 2: Cross-group synthesis
-     */
+    
     public String synthesizeHierarchically(Map<String, String> sectionContents,
         DeepResearchContext context) {
         try {
@@ -49,9 +41,7 @@ public class HierarchicalSynthesizer {
         }
     }
 
-    /**
-     * Synthesize content within related section groups
-     */
+    
     private Map<String, String> synthesizeRelatedSections(Map<String, String> sections) {
         Map<String, List<String>> groups = groupRelatedSections(sections);
         Map<String, String> syntheses = new HashMap<>();
@@ -66,9 +56,7 @@ public class HierarchicalSynthesizer {
         return syntheses;
     }
 
-    /**
-     * Group related sections by semantic similarity
-     */
+    
     private Map<String, List<String>> groupRelatedSections(Map<String, String> sections) {
         Map<String, List<String>> groups = new HashMap<>();
 
@@ -80,9 +68,7 @@ public class HierarchicalSynthesizer {
         return groups;
     }
 
-    /**
-     * Determine semantic group for section categorization
-     */
+    
     private String determineGroupKey(String sectionTitle) {
         String lower = sectionTitle.toLowerCase();
 
@@ -114,9 +100,7 @@ public class HierarchicalSynthesizer {
         return "overview";
     }
 
-    /**
-     * Synthesize content within a section group
-     */
+    
     private String synthesizeSectionGroup(List<String> groupSections, String groupType) {
         if (groupSections.size() == 1) {
             return groupSections.get(0);
@@ -136,9 +120,7 @@ public class HierarchicalSynthesizer {
         }
     }
 
-    /**
-     * Build synthesis prompt for section groups
-     */
+    
     private String buildGroupSynthesisPrompt(List<String> sections, String groupType) {
         StringBuilder prompt = new StringBuilder();
 
@@ -174,9 +156,7 @@ public class HierarchicalSynthesizer {
         return prompt.toString();
     }
 
-    /**
-     * Synthesize across different groups to create final narrative
-     */
+    
     private String synthesizeAcrossGroups(Map<String, String> groupSyntheses,
         DeepResearchContext context) {
         StringBuilder synthesis = new StringBuilder();
@@ -206,9 +186,7 @@ public class HierarchicalSynthesizer {
         return applyFinalCoherenceEnhancement(synthesis.toString(), context);
     }
 
-    /**
-     * Create smooth transitions between content groups
-     */
+    
     private String createGroupTransition(String groupKey) {
         return switch (groupKey.toLowerCase()) {
             case "overview" -> "## Research Overview and Context\n\n";
@@ -222,9 +200,7 @@ public class HierarchicalSynthesizer {
         };
     }
 
-    /**
-     * Apply final coherence enhancement to synthesized content
-     */
+    
     private String applyFinalCoherenceEnhancement(String content, DeepResearchContext context) {
         try {
             if (content.length() < 5000) {
@@ -265,9 +241,7 @@ public class HierarchicalSynthesizer {
         }
     }
 
-    /**
-     * Synthesize insights from multiple research iterations
-     */
+    
     public Map<String, String> synthesizeIterativeInsights(Map<String, List<String>> iterativeResults,
         DeepResearchContext context) {
         Map<String, String> synthesizedInsights = new HashMap<>();
@@ -296,9 +270,7 @@ public class HierarchicalSynthesizer {
         return synthesizedInsights;
     }
 
-    /**
-     * Build prompt for synthesizing multiple insights
-     */
+    
     private String buildInsightSynthesisPrompt(String question, List<String> insights) {
         StringBuilder prompt = new StringBuilder();
 
@@ -325,9 +297,7 @@ public class HierarchicalSynthesizer {
         return prompt.toString();
     }
 
-    /**
-     * Utility methods
-     */
+    
     private String capitalize(String str) {
         if (str == null || str.isEmpty()) {
             return str;
