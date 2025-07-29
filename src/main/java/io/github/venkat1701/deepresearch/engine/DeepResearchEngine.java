@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 import io.github.venkat1701.citation.CitationResult;
 import io.github.venkat1701.citation.service.CitationService;
 import io.github.venkat1701.core.contracts.LLMClient;
+import io.github.venkat1701.core.payloads.LLMResponse;
 import io.github.venkat1701.deepresearch.context.DeepResearchContext;
 import io.github.venkat1701.deepresearch.models.DeepResearchConfig;
 import io.github.venkat1701.deepresearch.models.DeepResearchResult;
@@ -212,134 +213,6 @@ public class DeepResearchEngine {
         return new ResearchResults(allCitations, categorizedResults, consolidatedInsights);
     }
 
-    private List<ResearchQuestion> generateRoundQuestionsWithDeduplication(DeepResearchContext context, Set<String> exploredTopics, int round,
-        Set<String> processedQuestions) {
-        try {
-
-            List<ResearchQuestion> questions = generateComprehensiveQuestionsFixed(context, exploredTopics, round);
-
-            questions = deduplicateAndValidateQuestions(questions, processedQuestions);
-
-            if (questions.size() < MIN_QUESTIONS_TO_PROCEED) {
-
-                List<ResearchQuestion> templateQuestions = generateTemplateBasedQuestions(context, round);
-                questions.addAll(deduplicateAndValidateQuestions(templateQuestions, processedQuestions));
-            }
-
-            if (questions.isEmpty()) {
-
-                questions = generateEmergencyQuestions(context, round);
-            }
-
-            questions = questions.stream()
-                .filter(q -> q != null && q.getQuestion() != null && !q.getQuestion()
-                    .trim()
-                    .isEmpty())
-                .filter(q -> !processedQuestions.contains(q.getQuestion()
-                    .toLowerCase()
-                    .trim()))
-                .distinct()
-                .limit(MAX_QUESTIONS_PER_ROUND)
-                .collect(Collectors.toList());
-
-            logger.info("Generated " + questions.size() + " deduplicated questions for round " + round);
-            return questions;
-
-        } catch (Exception e) {
-            logger.warning("Question generation with deduplication failed: " + e.getMessage());
-            return generateEmergencyQuestions(context, round);
-        }
-    }
-
-    private List<ResearchQuestion> generateComprehensiveQuestionsFixed(DeepResearchContext context, Set<String> exploredTopics, int round) {
-        try {
-            String questionPrompt = buildEnhancedQuestionPrompt(context, exploredTopics, round);
-
-            if (countTokens(questionPrompt) > CONTEXT_WINDOW_LIMIT - 5000) {
-                questionPrompt = contextChunker.compressPrompt(questionPrompt, CONTEXT_WINDOW_LIMIT - 5000);
-            }
-
-            String response = llmClient.complete(questionPrompt, String.class)
-                .structuredOutput();
-
-            if (response == null || response.trim()
-                .isEmpty()) {
-                logger.warning("Empty response from LLM for question generation");
-                return new ArrayList<>();
-            }
-
-            List<ResearchQuestion> questions = parseQuestionsWithDeduplication(response, context, round);
-
-            logger.info("Generated " + questions.size() + " comprehensive questions for round " + round);
-            return questions;
-
-        } catch (Exception e) {
-            logger.warning("Comprehensive question generation failed: " + e.getMessage());
-            return new ArrayList<>();
-        }
-    }
-
-    private List<ResearchQuestion> parseQuestionsWithDeduplication(String response, DeepResearchContext context, int round) {
-        List<ResearchQuestion> questions = new LinkedList<>();
-        Set<String> seenQuestions = new HashSet<>();
-
-        try {
-
-            questions.addAll(parseStructuredQuestionsFixed(response, context, round, seenQuestions));
-
-            if (questions.isEmpty()) {
-                questions.addAll(parseNumberedQuestions(response, context, round, seenQuestions));
-            }
-
-            if (questions.isEmpty()) {
-                questions.addAll(parseBulletQuestions(response, context, round, seenQuestions));
-            }
-
-            if (questions.isEmpty()) {
-                questions.addAll(extractQuestionSentences(response, context, round, seenQuestions));
-            }
-
-        } catch (Exception e) {
-            logger.warning("Question parsing failed: " + e.getMessage());
-        }
-
-        return questions;
-    }
-
-    private List<ResearchQuestion> parseStructuredQuestionsFixed(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
-        List<ResearchQuestion> questions = new ArrayList<>();
-
-        try {
-
-            String[] blocks = response.split("(?i)(?=QUESTION:|Question:|Q\\d*:)");
-
-            for (String block : blocks) {
-                if (block.trim()
-                    .isEmpty()) {
-                    continue;
-                }
-
-                try {
-                    ResearchQuestion question = parseQuestionBlockFixed(block.trim(), context, round, seenQuestions);
-                    if (question != null && !seenQuestions.contains(question.getQuestion()
-                        .toLowerCase()
-                        .trim())) {
-                        questions.add(question);
-                        seenQuestions.add(question.getQuestion()
-                            .toLowerCase()
-                            .trim());
-                    }
-                } catch (Exception e) {
-                    logger.fine("Failed to parse question block: " + e.getMessage());
-                }
-            }
-        } catch (Exception e) {
-            logger.warning("Structured question parsing failed: " + e.getMessage());
-        }
-
-        return questions;
-    }
-
     private ResearchQuestion parseQuestionBlockFixed(String block, DeepResearchContext context, int round, Set<String> seenQuestions) {
         String questionText = null;
         String category = "General";
@@ -376,80 +249,6 @@ public class DeepResearchEngine {
         }
 
         return null;
-    }
-
-    private List<ResearchQuestion> parseNumberedQuestions(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
-        List<ResearchQuestion> questions = new ArrayList<>();
-
-        Matcher matcher = NUMBERED_PATTERN.matcher(response);
-        while (matcher.find()) {
-            String questionText = matcher.group(1)
-                .trim();
-            if (questionText.endsWith("?") && questionText.length() > 10) {
-                String normalizedQuestion = questionText.toLowerCase()
-                    .trim();
-                if (!seenQuestions.contains(normalizedQuestion)) {
-                    questions.add(new ResearchQuestion(questionText, "General", "Medium"));
-                    seenQuestions.add(normalizedQuestion);
-                }
-            }
-        }
-
-        return questions;
-    }
-
-    private List<ResearchQuestion> parseBulletQuestions(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
-        List<ResearchQuestion> questions = new ArrayList<>();
-
-        Matcher matcher = BULLET_PATTERN.matcher(response);
-        while (matcher.find()) {
-            String questionText = matcher.group(1)
-                .trim();
-            if (questionText.endsWith("?") && questionText.length() > 10) {
-                String normalizedQuestion = questionText.toLowerCase()
-                    .trim();
-                if (!seenQuestions.contains(normalizedQuestion)) {
-                    questions.add(new ResearchQuestion(questionText, "General", "Medium"));
-                    seenQuestions.add(normalizedQuestion);
-                }
-            }
-        }
-
-        return questions;
-    }
-
-    private List<ResearchQuestion> extractQuestionSentences(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
-        List<ResearchQuestion> questions = new ArrayList<>();
-
-        Matcher matcher = QUESTION_PATTERN.matcher(response);
-        while (matcher.find()) {
-            String questionText = matcher.group(1)
-                .trim();
-            if (questionText.length() > 15) {
-                String normalizedQuestion = questionText.toLowerCase()
-                    .trim();
-                if (!seenQuestions.contains(normalizedQuestion)) {
-                    questions.add(new ResearchQuestion(questionText, "General", "Medium"));
-                    seenQuestions.add(normalizedQuestion);
-                }
-            }
-        }
-
-        return questions;
-    }
-
-    private List<ResearchQuestion> deduplicateAndValidateQuestions(List<ResearchQuestion> questions, Set<String> processedQuestions) {
-        return questions.stream()
-            .filter(q -> q != null && q.getQuestion() != null)
-            .filter(q -> q.getQuestion()
-                .trim()
-                .length() > 10 && q.getQuestion()
-                .trim()
-                .length() < 300)
-            .filter(q -> !processedQuestions.contains(q.getQuestion()
-                .toLowerCase()
-                .trim()))
-            .collect(Collectors.toCollection(() -> new ArrayList<>()));
     }
 
     private CompletableFuture<QuestionResearchResult> executeQuestionResearchWithResult(ResearchQuestion question, DeepResearchContext context,
@@ -804,24 +603,6 @@ public class DeepResearchEngine {
                     "What future directions and potential developments are expected for {QUERY}?",
                     "What are the strategic considerations for adopting {QUERY}?", "What comprehensive evaluation criteria should be applied to {QUERY}?" };
         }
-    }
-
-    private List<ResearchQuestion> generateEmergencyQuestions(DeepResearchContext context, int round) {
-        List<ResearchQuestion> emergencyQuestions = new ArrayList<>();
-        String query = context.getOriginalQuery();
-
-        emergencyQuestions.add(new ResearchQuestion("What are the essential concepts and fundamentals that define " + query + "?", "Overview", "High"));
-
-        emergencyQuestions.add(
-            new ResearchQuestion("What are the practical implementation approaches and methodologies for " + query + "?", "Implementation", "High"));
-
-        emergencyQuestions.add(new ResearchQuestion("What are the current trends, developments, and future outlook for " + query + "?", "Analysis", "Medium"));
-
-        emergencyQuestions.add(
-            new ResearchQuestion("What are the key benefits, challenges, and considerations when working with " + query + "?", "Analysis", "Medium"));
-
-        logger.info("Generated " + emergencyQuestions.size() + " emergency questions");
-        return emergencyQuestions;
     }
 
     private String determineQuestionCategory(String questionText) {
@@ -1468,13 +1249,6 @@ public class DeepResearchEngine {
             new NarrativeQualityMetrics(fallbackNarrative.length(), fallbackNarrative.split("\\s+").length, false), config);
     }
 
-    private String truncateString(String str, int maxLength) {
-        if (str == null || str.length() <= maxLength) {
-            return str != null ? str : "";
-        }
-        return str.substring(0, maxLength - 3) + "...";
-    }
-
     private int countTokens(String text) {
         return text != null ? (int) Math.ceil(text.length() / 4.0) : 0;
     }
@@ -1523,6 +1297,569 @@ public class DeepResearchEngine {
                 .interrupt();
             logger.warning("Shutdown interrupted");
         }
+    }
+
+    private List<ResearchQuestion> parseQuestionsWithDeduplication(String response, DeepResearchContext context, int round) {
+        List<ResearchQuestion> questions = new LinkedList<>();
+
+        Set<String> seenQuestions = new LinkedHashSet<>();
+
+        if (response == null || response.trim()
+            .isEmpty()) {
+            logger.warning("Empty response received for question parsing in round " + round);
+            return questions;
+        }
+
+        try {
+
+            List<ResearchQuestion> structuredQuestions = parseStructuredQuestionsFixed(response, context, round, seenQuestions);
+            addUniqueQuestions(questions, structuredQuestions, seenQuestions);
+
+            if (questions.isEmpty()) {
+                List<ResearchQuestion> numberedQuestions = parseNumberedQuestions(response, context, round, seenQuestions);
+                addUniqueQuestions(questions, numberedQuestions, seenQuestions);
+            }
+
+            if (questions.isEmpty()) {
+                List<ResearchQuestion> bulletQuestions = parseBulletQuestions(response, context, round, seenQuestions);
+                addUniqueQuestions(questions, bulletQuestions, seenQuestions);
+            }
+
+            if (questions.isEmpty()) {
+                List<ResearchQuestion> extractedQuestions = extractQuestionSentences(response, context, round, seenQuestions);
+                addUniqueQuestions(questions, extractedQuestions, seenQuestions);
+            }
+
+            logger.info("Successfully parsed " + questions.size() + " unique questions from response in round " + round);
+
+        } catch (Exception e) {
+            logger.warning("Question parsing failed: " + e.getMessage() + ". Using emergency fallback for round " + round);
+
+            questions.addAll(generateEmergencyQuestions(context, round));
+        }
+
+        return questions;
+    }
+
+    private void addUniqueQuestions(List<ResearchQuestion> mainList, List<ResearchQuestion> newQuestions, Set<String> seenQuestions) {
+        if (newQuestions == null) {
+            return;
+        }
+
+        for (ResearchQuestion question : newQuestions) {
+            if (question != null && question.getQuestion() != null) {
+                String normalizedQuestion = normalizeQuestionText(question.getQuestion());
+                if (!seenQuestions.contains(normalizedQuestion)) {
+                    mainList.add(question);
+                    seenQuestions.add(normalizedQuestion);
+                }
+            }
+        }
+    }
+
+    private String normalizeQuestionText(String questionText) {
+        if (questionText == null) {
+            return "";
+        }
+
+        return questionText.toLowerCase()
+            .trim()
+            .replaceAll("\\s+", " ")
+            .replaceAll("[^a-zA-Z0-9\\s\\?]", "");
+    }
+
+    private List<ResearchQuestion> parseStructuredQuestionsFixed(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        if (response == null || response.trim()
+            .isEmpty()) {
+            return questions;
+        }
+
+        try {
+
+            String[] blocks = response.split("(?i)(?=QUESTION:|Question:|Q\\d*:)");
+
+            for (String block : blocks) {
+                if (block == null || block.trim()
+                    .isEmpty()) {
+                    continue;
+                }
+
+                try {
+                    ResearchQuestion question = parseQuestionBlockSafely(block.trim(), context, round);
+                    if (question != null) {
+                        String normalizedQuestion = normalizeQuestionText(question.getQuestion());
+                        if (!seenQuestions.contains(normalizedQuestion)) {
+                            questions.add(question);
+                            seenQuestions.add(normalizedQuestion);
+                        } else {
+                            logger.fine("Skipping duplicate question: " + truncateString(question.getQuestion(), 50));
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.fine("Failed to parse question block: " + e.getMessage());
+
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Structured question parsing failed: " + e.getMessage());
+        }
+
+        return questions;
+    }
+
+    private ResearchQuestion parseQuestionBlockSafely(String block, DeepResearchContext context, int round) {
+        if (block == null || block.trim()
+            .isEmpty()) {
+            return null;
+        }
+
+        String questionText = null;
+        String category = "General";
+        String priority = "Medium";
+        String rationale = "";
+
+        try {
+            String[] lines = block.split("\n");
+
+            for (String line : lines) {
+                if (line == null) {
+                    continue;
+                }
+
+                line = line.trim();
+                if (line.isEmpty()) {
+                    continue;
+                }
+
+                try {
+                    if (line.matches("(?i).*QUESTION:|.*Question:|.*Q\\d*:.*")) {
+                        questionText = extractQuestionFromLineSafely(line);
+                    } else if (line.matches("(?i).*CATEGORY:|.*Category:.*")) {
+                        category = extractValueSafely(line, "General");
+                    } else if (line.matches("(?i).*PRIORITY:|.*Priority:.*")) {
+                        priority = extractValueSafely(line, "Medium");
+                    } else if (line.matches("(?i).*RATIONALE:|.*Rationale:.*")) {
+                        rationale = extractValueSafely(line, "");
+                    } else if (questionText == null && line.endsWith("?") && line.length() > 10) {
+
+                        questionText = line;
+                    }
+                } catch (Exception e) {
+                    logger.fine("Error parsing line: " + line + " - " + e.getMessage());
+
+                }
+            }
+
+            if (questionText != null && isValidQuestionText(questionText)) {
+                ResearchQuestion question = new ResearchQuestion(questionText, category, priority);
+                question.setRationale(rationale);
+                return question;
+            }
+
+        } catch (Exception e) {
+            logger.warning("Error parsing question block: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    private String extractQuestionFromLineSafely(String line) {
+        if (line == null || line.trim()
+            .isEmpty()) {
+            return null;
+        }
+
+        try {
+            int colonIndex = line.indexOf(':');
+            if (colonIndex >= 0 && colonIndex < line.length() - 1) {
+                String extracted = line.substring(colonIndex + 1)
+                    .trim();
+                return extracted.isEmpty() ? null : extracted;
+            }
+            return line.trim();
+        } catch (Exception e) {
+            logger.fine("Error extracting question from line: " + e.getMessage());
+            return line.trim();
+        }
+    }
+
+    private String extractValueSafely(String line, String fallback) {
+        if (line == null || line.trim()
+            .isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            int colonIndex = line.indexOf(':');
+            if (colonIndex >= 0 && colonIndex < line.length() - 1) {
+                String extracted = line.substring(colonIndex + 1)
+                    .trim();
+                return extracted.isEmpty() ? fallback : extracted;
+            }
+            return fallback;
+        } catch (Exception e) {
+            logger.fine("Error extracting value from line: " + e.getMessage());
+            return fallback;
+        }
+    }
+
+    private boolean isValidQuestionText(String questionText) {
+        if (questionText == null || questionText.trim()
+            .isEmpty()) {
+            return false;
+        }
+
+        String trimmed = questionText.trim();
+
+        if (trimmed.length() < 10) {
+            return false;
+        }
+
+        if (trimmed.length() > 300) {
+            return false;
+        }
+
+        if (!trimmed.matches(".*[a-zA-Z].*")) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private List<ResearchQuestion> parseNumberedQuestions(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        if (response == null || response.trim()
+            .isEmpty()) {
+            return questions;
+        }
+
+        try {
+            Matcher matcher = NUMBERED_PATTERN.matcher(response);
+            while (matcher.find()) {
+                try {
+                    String questionText = matcher.group(1);
+                    if (questionText != null) {
+                        questionText = questionText.trim();
+                        if (isValidQuestionText(questionText) && questionText.endsWith("?")) {
+                            String normalizedQuestion = normalizeQuestionText(questionText);
+                            if (!seenQuestions.contains(normalizedQuestion)) {
+                                questions.add(new ResearchQuestion(questionText, "General", "Medium"));
+                                seenQuestions.add(normalizedQuestion);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.fine("Error parsing numbered question: " + e.getMessage());
+
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Numbered question parsing failed: " + e.getMessage());
+        }
+
+        return questions;
+    }
+
+    private List<ResearchQuestion> parseBulletQuestions(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        if (response == null || response.trim()
+            .isEmpty()) {
+            return questions;
+        }
+
+        try {
+            Matcher matcher = BULLET_PATTERN.matcher(response);
+            while (matcher.find()) {
+                try {
+                    String questionText = matcher.group(1);
+                    if (questionText != null) {
+                        questionText = questionText.trim();
+                        if (isValidQuestionText(questionText) && questionText.endsWith("?")) {
+                            String normalizedQuestion = normalizeQuestionText(questionText);
+                            if (!seenQuestions.contains(normalizedQuestion)) {
+                                questions.add(new ResearchQuestion(questionText, "General", "Medium"));
+                                seenQuestions.add(normalizedQuestion);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.fine("Error parsing bullet question: " + e.getMessage());
+
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Bullet question parsing failed: " + e.getMessage());
+        }
+
+        return questions;
+    }
+
+    private List<ResearchQuestion> extractQuestionSentences(String response, DeepResearchContext context, int round, Set<String> seenQuestions) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        if (response == null || response.trim()
+            .isEmpty()) {
+            return questions;
+        }
+
+        try {
+            Matcher matcher = QUESTION_PATTERN.matcher(response);
+            while (matcher.find()) {
+                try {
+                    String questionText = matcher.group(1);
+                    if (questionText != null) {
+                        questionText = questionText.trim();
+                        if (isValidQuestionText(questionText) && questionText.length() > 15) {
+                            String normalizedQuestion = normalizeQuestionText(questionText);
+                            if (!seenQuestions.contains(normalizedQuestion)) {
+                                questions.add(new ResearchQuestion(questionText, "General", "Medium"));
+                                seenQuestions.add(normalizedQuestion);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.fine("Error extracting question sentence: " + e.getMessage());
+
+                }
+            }
+        } catch (Exception e) {
+            logger.warning("Question sentence extraction failed: " + e.getMessage());
+        }
+
+        return questions;
+    }
+
+    private List<ResearchQuestion> deduplicateAndValidateQuestions(List<ResearchQuestion> questions, Set<String> processedQuestions) {
+        if (questions == null) {
+            return new ArrayList<>();
+        }
+
+        Set<String> localSeen = new LinkedHashSet<>();
+
+        return questions.stream()
+            .filter(q -> q != null && q.getQuestion() != null)
+            .filter(q -> isValidQuestionText(q.getQuestion()))
+            .filter(q -> {
+                String normalized = normalizeQuestionText(q.getQuestion());
+
+                if (localSeen.contains(normalized) || processedQuestions.contains(normalized)) {
+                    return false;
+                }
+                localSeen.add(normalized);
+                return true;
+            })
+            .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private List<ResearchQuestion> generateRoundQuestionsWithDeduplication(DeepResearchContext context, Set<String> exploredTopics, int round,
+        Set<String> processedQuestions) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        try {
+            logger.info("Generating questions for round " + round + " with " + processedQuestions.size() + " already processed questions");
+
+            List<ResearchQuestion> primaryQuestions = generateComprehensiveQuestionsFixed(context, exploredTopics, round);
+
+            List<ResearchQuestion> validatedQuestions = deduplicateAndValidateQuestions(primaryQuestions, processedQuestions);
+            questions.addAll(validatedQuestions);
+
+            if (questions.size() < MIN_QUESTIONS_TO_PROCEED) {
+                logger.info("Insufficient questions from primary generation (" + questions.size() + "), trying template-based approach");
+
+                List<ResearchQuestion> templateQuestions = generateTemplateBasedQuestions(context, round);
+                List<ResearchQuestion> validatedTemplateQuestions = deduplicateAndValidateQuestions(templateQuestions, processedQuestions);
+
+                for (ResearchQuestion templateQ : validatedTemplateQuestions) {
+                    if (templateQ != null && !containsQuestion(questions, templateQ)) {
+                        questions.add(templateQ);
+                    }
+                }
+            }
+
+            if (questions.isEmpty()) {
+                logger.warning("No questions generated through normal means, using emergency fallback for round " + round);
+                questions.addAll(generateEmergencyQuestions(context, round));
+            }
+
+            questions = questions.stream()
+                .filter(q -> q != null && q.getQuestion() != null)
+                .filter(q -> !processedQuestions.contains(normalizeQuestionText(q.getQuestion())))
+                .distinct()
+                .limit(MAX_QUESTIONS_PER_ROUND)
+                .collect(Collectors.toList());
+
+            for (ResearchQuestion question : questions) {
+                if (question != null && question.getQuestion() != null) {
+                    processedQuestions.add(normalizeQuestionText(question.getQuestion()));
+                }
+            }
+
+            logger.info("Generated " + questions.size() + " unique, validated questions for round " + round);
+            return questions;
+
+        } catch (Exception e) {
+            logger.severe("Question generation failed for round " + round + ": " + e.getMessage());
+
+            try {
+                List<ResearchQuestion> emergencyQuestions = generateEmergencyQuestions(context, round);
+                logger.info("Using emergency questions as fallback: " + emergencyQuestions.size() + " questions");
+                return emergencyQuestions;
+            } catch (Exception fallbackError) {
+                logger.severe("Emergency question generation also failed: " + fallbackError.getMessage());
+                return new ArrayList<>();
+            }
+        }
+    }
+
+    private boolean containsQuestion(List<ResearchQuestion> questions, ResearchQuestion newQuestion) {
+        if (questions == null || newQuestion == null || newQuestion.getQuestion() == null) {
+            return false;
+        }
+
+        String normalizedNew = normalizeQuestionText(newQuestion.getQuestion());
+
+        return questions.stream()
+            .filter(q -> q != null && q.getQuestion() != null)
+            .anyMatch(q -> normalizeQuestionText(q.getQuestion()).equals(normalizedNew));
+    }
+
+    private List<ResearchQuestion> generateComprehensiveQuestionsFixed(DeepResearchContext context, Set<String> exploredTopics, int round) {
+        List<ResearchQuestion> questions = new ArrayList<>();
+
+        try {
+            String questionPrompt = buildEnhancedQuestionPrompt(context, exploredTopics, round);
+
+            if (countTokens(questionPrompt) > CONTEXT_WINDOW_LIMIT - 5000) {
+                questionPrompt = contextChunker.compressPrompt(questionPrompt, CONTEXT_WINDOW_LIMIT - 5000);
+                logger.info("Compressed question generation prompt for round " + round);
+            }
+
+            String response = null;
+            try {
+                LLMResponse<String> llmResponse = llmClient.complete(questionPrompt, String.class);
+                if (llmResponse != null) {
+                    response = llmResponse.structuredOutput();
+                }
+            } catch (Exception llmError) {
+                logger.warning("LLM call failed for question generation: " + llmError.getMessage());
+
+            }
+
+            if (response != null && !response.trim()
+                .isEmpty()) {
+                logger.info("Received LLM response for question generation, parsing...");
+
+                List<ResearchQuestion> parsedQuestions = parseQuestionsWithDeduplication(response, context, round);
+                if (parsedQuestions != null && !parsedQuestions.isEmpty()) {
+                    questions.addAll(parsedQuestions);
+                    logger.info("Successfully parsed " + parsedQuestions.size() + " questions from LLM response");
+                } else {
+                    logger.warning("Question parsing returned empty results for round " + round);
+                }
+            } else {
+                logger.warning("Empty or null response from LLM for question generation in round " + round);
+            }
+
+        } catch (Exception e) {
+            logger.warning("Comprehensive question generation failed for round " + round + ": " + e.getMessage());
+        }
+
+        return questions != null ? questions : new ArrayList<>();
+    }
+
+    private List<ResearchQuestion> generateEmergencyQuestions(DeepResearchContext context, int round) {
+        List<ResearchQuestion> emergencyQuestions = new ArrayList<>();
+
+        try {
+            String query = context.getOriginalQuery();
+            if (query == null || query.trim()
+                .isEmpty()) {
+                query = "research topic";
+            }
+
+            emergencyQuestions.add(
+                createSafeResearchQuestion("What are the essential concepts and fundamentals that define " + query + "?", "Overview", "High"));
+
+            emergencyQuestions.add(
+                createSafeResearchQuestion("What are the practical implementation approaches and methodologies for " + query + "?", "Implementation", "High"));
+
+            emergencyQuestions.add(
+                createSafeResearchQuestion("What are the current trends, developments, and future outlook for " + query + "?", "Analysis", "Medium"));
+
+            emergencyQuestions.add(
+                createSafeResearchQuestion("What are the key benefits, challenges, and considerations when working with " + query + "?", "Analysis", "Medium"));
+
+            switch (round) {
+                case 1 ->
+                    emergencyQuestions.add(createSafeResearchQuestion("What is the basic introduction and overview of " + query + "?", "Overview", "High"));
+                case 2 -> emergencyQuestions.add(
+                    createSafeResearchQuestion("What are the technical details and specifications for " + query + "?", "Technical", "Medium"));
+                case 3 ->
+                    emergencyQuestions.add(createSafeResearchQuestion("What are real-world examples and use cases of " + query + "?", "Case-Study", "Medium"));
+                default -> emergencyQuestions.add(
+                    createSafeResearchQuestion("What comprehensive analysis and insights exist about " + query + "?", "Analysis", "Low"));
+            }
+
+            logger.info("Generated " + emergencyQuestions.size() + " emergency questions for round " + round);
+
+        } catch (Exception e) {
+            logger.severe("Emergency question generation failed: " + e.getMessage());
+
+            try {
+                String safeQuery = context.getOriginalQuery() != null ? context.getOriginalQuery() : "the topic";
+                emergencyQuestions.add(createSafeResearchQuestion("What information is available about " + safeQuery + "?", "General", "Medium"));
+            } catch (Exception finalError) {
+                logger.severe("Final fallback question creation failed: " + finalError.getMessage());
+
+            }
+        }
+
+        return emergencyQuestions;
+    }
+
+    private ResearchQuestion createSafeResearchQuestion(String questionText, String category, String priority) {
+        try {
+            if (questionText == null || questionText.trim()
+                .isEmpty()) {
+                questionText = "What information is available about this topic?";
+            }
+
+            if (category == null || category.trim()
+                .isEmpty()) {
+                category = "General";
+            }
+
+            if (priority == null || priority.trim()
+                .isEmpty()) {
+                priority = "Medium";
+            }
+
+            if (!questionText.trim()
+                .endsWith("?")) {
+                questionText = questionText.trim() + "?";
+            }
+
+            return new ResearchQuestion(questionText, category, priority);
+
+        } catch (Exception e) {
+            logger.warning("Error creating safe research question: " + e.getMessage());
+
+            return new ResearchQuestion("What information is available about this topic?", "General", "Medium");
+        }
+    }
+
+    private String truncateString(String str, int maxLength) {
+        if (str == null) {
+            return "null";
+        }
+        if (str.length() <= maxLength) {
+            return str;
+        }
+        return str.substring(0, maxLength - 3) + "...";
     }
 
     private static class DeepResearchSession {
