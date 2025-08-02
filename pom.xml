@@ -6,7 +6,7 @@
 
     <groupId>com.github.bhavuklabs</groupId>
     <artifactId>research4j</artifactId>
-    <version>1.0.3</version> 
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <name>research4J</name>
