@@ -59,17 +59,25 @@ In order to use this, you need to setup your own programmable search engine. Thi
 ### Basic Usage
 
 ```java
-import io.github.venkat1701.Research4j;
-import io.github.venkat1701.agent.ResearchResult;
+import com.github.bhavuklabs.Research4j;
+import agent.com.github.bhavuklabs.ResearchResult;
 
 // Environment-based configuration (recommended)
-try (Research4j research = Research4j.createDefault()) {
-    ResearchResult result = research.research("What is machine learning?");
+try(Research4j research = Research4j.createDefault()){
+ResearchResult result = research.research("What is machine learning?");
     
-    System.out.println("Answer: " + result.getAnswer());
-    System.out.println("Citations: " + result.getCitations().size());
-    System.out.println("Processing Time: " + result.getProcessingTime());
-}
+    System.out.
+
+println("Answer: "+result.getAnswer());
+    System.out.
+
+println("Citations: "+result.getCitations().
+
+size());
+    System.out.
+
+println("Processing Time: "+result.getProcessingTime());
+    }
 ```
 
 ## Configuration Guide
@@ -135,27 +143,19 @@ try (Research4j research = Research4j.createDefault();
 ### Custom User Profiles
 
 ```java
-import io.github.venkat1701.pipeline.profile.UserProfile;
-import io.github.venkat1701.core.enums.OutputFormat;
+import profile.pipeline.com.github.bhavuklabs.UserProfile;
+import enums.core.com.github.bhavuklabs.OutputFormat;
 
-UserProfile developerProfile = new UserProfile(
-    "dev-001",                          // User ID
+UserProfile developerProfile = new UserProfile("dev-001",                          // User ID
     "software-engineering",             // Domain
     "expert",                          // Expertise level
     List.of("technical", "detailed"),  // Preferences
     Map.of(                           // Topic interests (weighted)
-        "java", 9,
-        "microservices", 8,
-        "distributed systems", 9
-    ),
-    List.of(),                        // Previous queries
+        "java", 9, "microservices", 8, "distributed systems", 9), List.of(),                        // Previous queries
     OutputFormat.MARKDOWN             // Preferred format
 );
 
-ResearchResult result = research.research(
-    "Best practices for API rate limiting", 
-    developerProfile
-);
+ResearchResult result = research.research("Best practices for API rate limiting", developerProfile);
 ```
 
 ### Specialized Configurations
