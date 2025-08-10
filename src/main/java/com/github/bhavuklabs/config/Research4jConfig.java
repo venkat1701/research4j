@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.github.bhavuklabs.citation.enums.CitationSource;
+import com.github.bhavuklabs.core.enums.GraphEngineType;
 import com.github.bhavuklabs.core.enums.ModelType;
 import com.github.bhavuklabs.core.enums.OutputFormat;
 import com.github.bhavuklabs.core.enums.ReasoningMethod;
@@ -21,6 +22,7 @@ public class Research4jConfig {
     private static final String GOOGLE_SEARCH_API_KEY = "GOOGLE_SEARCH_API_KEY";
     private static final String GOOGLE_CSE_ID = "GOOGLE_CSE_ID";
 
+    private GraphEngineType graphEngine = GraphEngineType.LEGACY_CUSTOM;
     private final Map<String, Object> properties;
     private final Map<String, String> apiKeys;
 
@@ -253,6 +255,17 @@ public class Research4jConfig {
             return this;
         }
 
+        public Builder withGraphEngine(GraphEngineType engine) {
+            this.graphEngine = engine;
+            return this;
+        }
+
+        private GraphEngineType graphEngine = GraphEngineType.LEGACY_CUSTOM;
+
+        public Builder enableLangGraph4j() {
+            return withGraphEngine(GraphEngineType.LANGGRAPH4J);
+        }
+
         public Builder defaultCitationSource(CitationSource source) {
             this.properties.put("defaultCitationSource", source.name());
             return this;
@@ -307,6 +320,7 @@ public class Research4jConfig {
         public Research4jConfig build() {
             return new Research4jConfig(this);
         }
+
     }
 
     public static Research4jConfig createDefault() {
@@ -323,6 +337,10 @@ public class Research4jConfig {
         return builder().geminiApiKey(apiKey)
             .defaultModel("gemini-2.0-flash")
             .build();
+    }
+
+    public GraphEngineType getGraphEngine() {
+        return graphEngine;
     }
 
     public static Research4jConfig createWithGeminiAndGoogle(String geminiKey, String searchKey, String cseId) {
