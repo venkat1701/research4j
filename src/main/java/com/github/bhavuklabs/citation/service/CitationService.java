@@ -60,26 +60,21 @@ public class CitationService implements AutoCloseable {
     public List<CitationResult> search(String query) throws CitationException {
         validateQuery(query);
 
-        // Apply rate limiting
         applyRateLimit();
 
         logger.info("Searching for: " + truncateQuery(query));
 
-        // Try primary fetcher first
         List<CitationResult> results = searchWithFetcher(primaryFetcher, query, "primary");
 
-        // If primary fails or returns insufficient results, try fallback
         if ((results.isEmpty() || results.size() < 3) && fallbackFetcher != null) {
             logger.info("Primary fetcher returned " + results.size() +
                 " results, trying fallback fetcher");
 
             List<CitationResult> fallbackResults = searchWithFetcher(fallbackFetcher, query, "fallback");
 
-            // Merge results, prioritizing primary
             results = mergeResults(results, fallbackResults);
         }
 
-        // Validate and enhance results
         List<CitationResult> validatedResults = validateAndEnhanceResults(results, query);
 
         logger.info("Search completed: " + validatedResults.size() + " valid citations returned");
@@ -269,7 +264,6 @@ public class CitationService implements AutoCloseable {
 
 
     private CitationResult enhanceResult(CitationResult result, String query) {
-        // Calculate enhanced relevance score
         double enhancedScore = calculateEnhancedRelevance(result, query);
         result.setRelevanceScore(enhancedScore);
 
@@ -408,23 +402,23 @@ public class CitationService implements AutoCloseable {
         try {
             // If primary is Tavily and we have Google credentials, use Google as fallback
             if (config.getCitationSource() == TAVILY && cseId != null && !cseId.trim().isEmpty()) {
-                // We'd need a way to get Google API key for fallback - this is a limitation
-                // For now, we'll return null and rely on primary only
-                return null;
+                // For now, we'll log the limitation and return empty list
+                logger.info("Fallback to Google Search not implemented (missing API key configuration)");
+                return List.of();
             }
 
             // If primary is Google and we have Tavily credentials, use Tavily as fallback
             if (config.getCitationSource() == GOOGLE_GEMINI) {
-                // We'd need a way to get Tavily API key for fallback - this is a limitation
-                // For now, we'll return null and rely on primary only
-                return null;
+                // For now, we'll log the limitation and return empty list
+                logger.info("Fallback to Tavily not implemented (missing API key configuration)");
+                return List.of();
             }
 
         } catch (Exception e) {
             logger.warning("Failed to create fallback fetcher: " + e.getMessage());
         }
 
-        return null;
+        return List.of();
     }
 
 
