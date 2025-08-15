@@ -588,7 +588,7 @@ public class TavilyCitationFetcher implements CitationFetcher, AutoCloseable {
                 .build();
         } catch (Exception e) {
             logger.severe("Failed to create fallback citation: " + e.getMessage());
-            return CitationResult.empty("Failed to process citation");
+            return CitationResult.builder().content("Failed to process citation").build();
         }
     }
 
